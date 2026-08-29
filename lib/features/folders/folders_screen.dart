@@ -30,7 +30,11 @@ class _FoldersScreenState extends State<FoldersScreen> {
 
   Future<void> _reload() async {
     final future = _repository.fetchFolders();
-    setState(() => _foldersFuture = future);
+    // Block body — see FeedScreen._reload for why an arrow body here
+    // would make setState() throw ("callback argument returned a Future").
+    setState(() {
+      _foldersFuture = future;
+    });
     await future;
     if (mounted) setState(_optimisticFolders.clear);
   }

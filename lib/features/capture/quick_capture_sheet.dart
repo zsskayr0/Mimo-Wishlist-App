@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
 import '../../core/widgets/gradient_button.dart';
 import '../../data/models/folder.dart';
@@ -26,11 +27,28 @@ import 'crop_image_screen.dart';
 /// edit mode: fields start pre-filled and saving updates that row instead
 /// of creating a new one.
 class QuickCaptureSheet extends StatefulWidget {
-  const QuickCaptureSheet({super.key, this.editingMimo});
+  const QuickCaptureSheet({super.key, this.editingMimo, this.isDesktop = false});
 
   final Mimo? editingMimo;
 
+  /// True when this instance is presented as a centered floating dialog
+  /// (desktop) rather than a bottom sheet (mobile) — set by [show], never
+  /// by a caller directly. Swaps the outer chrome (rounded-all-corners
+  /// card, no drag handle, fixed width) without touching the form itself.
+  final bool isDesktop;
+
+  /// On desktop width, "add mimo" and "revisar mimo" are the same
+  /// centered floating dialog the wireframe shows for add — not a bottom
+  /// sheet stretched edge to edge, which read as oversized/"zoomed" on a
+  /// wide window.
   static Future<bool?> show(BuildContext context, {Mimo? editingMimo}) {
+    if (MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width)) {
+      return showDialog<bool>(
+        context: context,
+        barrierColor: Colors.black.withValues(alpha: 0.45),
+        builder: (_) => QuickCaptureSheet(editingMimo: editingMimo, isDesktop: true),
+      );
+    }
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -88,9 +106,7 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
       _selectedFolderId = editing.folderId;
       _linkDomain = editing.storeDomain;
       _existingCoverUrl = editing.coverImageUrl;
-      TagRepository().fetchTagsForMimo(editing.id).then((tags) {
-        if (mounted) setState(() => _selectedTagIds.addAll(tags.map((t) => t.id)));
-      });
+      _selectedTagIds.addAll(editing.tags.map((t) => t.id));
     }
   }
 
@@ -321,30 +337,25 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-        ),
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 38,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(color: colors.placeholder, borderRadius: BorderRadius.circular(3)),
+    final form = SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+                // A drag handle implies "swipe down to dismiss", which only
+                // makes sense for the bottom-sheet presentation.
+                if (!widget.isDesktop)
+                  Center(
+                    child: Container(
+                      width: 38,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(color: colors.placeholder, borderRadius: BorderRadius.circular(3)),
+                    ),
                   ),
-                ),
                 Row(
                   children: [
                     Text(_isEditing ? 'Editar mimo' : 'Novo mimo',
@@ -519,10 +530,40 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
                         )
                       : Text(_isEditing ? 'Salvar alterações' : 'Salvar no Feed'),
                 ),
-              ],
+          ],
+        ),
+      ),
+    );
+
+    if (widget.isDesktop) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(24),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 480,
+              maxHeight: MediaQuery.of(context).size.height * 0.86,
+            ),
+            child: Container(
+              decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(20)),
+              clipBehavior: Clip.antiAlias,
+              child: form,
             ),
           ),
         ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
+        child: form,
       ),
     );
   }

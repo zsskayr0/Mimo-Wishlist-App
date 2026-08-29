@@ -4,10 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/mimo_colors.dart';
 import '../../core/widgets/gradient_button.dart';
 import '../../data/models/mimo.dart';
-import '../../data/models/tag.dart';
 import '../../data/repositories/folder_repository.dart';
 import '../../data/repositories/mimo_repository.dart';
-import '../../data/repositories/tag_repository.dart';
 import '../capture/quick_capture_sheet.dart';
 import '../folders/folder_picker_sheet.dart';
 
@@ -23,14 +21,12 @@ class MimoDetailScreen extends StatefulWidget {
 class _MimoDetailScreenState extends State<MimoDetailScreen> {
   final _mimoRepository = MimoRepository();
   late Mimo _mimo;
-  late Future<List<MimoTag>> _tagsFuture;
   bool _isDeleted = false;
 
   @override
   void initState() {
     super.initState();
     _mimo = widget.mimo;
-    _tagsFuture = TagRepository().fetchTagsForMimo(_mimo.id);
   }
 
   Future<void> _setPriority(String priority) async {
@@ -45,6 +41,7 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
 
   Mimo _copyWith({String? priority, String? purchaseStatus}) => Mimo(
         id: _mimo.id,
+        ownerId: _mimo.ownerId,
         title: _mimo.title,
         priority: priority ?? _mimo.priority,
         purchaseStatus: purchaseStatus ?? _mimo.purchaseStatus,
@@ -56,6 +53,7 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
         coverImageUrl: _mimo.coverImageUrl,
         originalUrl: _mimo.originalUrl,
         storeDomain: _mimo.storeDomain,
+        tags: _mimo.tags,
         price: _mimo.price,
       );
 
@@ -75,12 +73,8 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
     final saved = await QuickCaptureSheet.show(context, editingMimo: _mimo);
     if (saved != true || !mounted) return;
     final refreshed = await _mimoRepository.fetchById(_mimo.id);
-    final tags = TagRepository().fetchTagsForMimo(_mimo.id);
-    if (!mounted) return;
-    setState(() {
-      if (refreshed != null) _mimo = refreshed;
-      _tagsFuture = tags;
-    });
+    if (!mounted || refreshed == null) return;
+    setState(() => _mimo = refreshed);
   }
 
   Future<void> _duplicate() async {
@@ -271,24 +265,12 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
                                       ? colors.tagGrayBg
                                       : _folderColor(colors).withValues(alpha: 0.16),
                                 ),
-                                FutureBuilder<List<MimoTag>>(
-                                  future: _tagsFuture,
-                                  builder: (context, snapshot) {
-                                    final tags = snapshot.data ?? const [];
-                                    return Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: [
-                                        for (final tag in tags)
-                                          _Pill(
-                                            label: '#${tag.name}',
-                                            color: colors.tagPlum,
-                                            background: colors.tagPlumBg,
-                                          ),
-                                      ],
-                                    );
-                                  },
-                                ),
+                                for (final tag in _mimo.tags)
+                                  _Pill(
+                                    label: '#${tag.name}',
+                                    color: colors.tagPlum,
+                                    background: colors.tagPlumBg,
+                                  ),
                               ],
                             ),
                           ],

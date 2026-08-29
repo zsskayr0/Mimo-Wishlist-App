@@ -4,6 +4,35 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.13-alpha] - 2026-08-29
+
+### Added
+- Busca de verdade no Feed e na tela de Pasta: pesquisa por título ou por
+  nome de tag, não só decorativa.
+- Filtro/ordenação completo (`MimoFilters`, `MimoFilterSheet`): tag, pasta,
+  owner (pra achar itens de alguém numa pasta compartilhada — os chips de
+  membro na tela de Pasta agora também funcionam como esse filtro),
+  prioridade, status de compra e loja (lista dinâmica, tirada do domínio
+  de cada link salvo); ordena por data de inclusão ou valor, crescente ou
+  decrescente.
+- No modo desktop, "Novo mimo" e "Editar mimo" agora abrem como um diálogo
+  flutuante centralizado (mesmo padrão visual), em vez do bottom sheet
+  esticado que ficava com "zoom grande" numa janela larga.
+
+### Fixed
+- Exceção não tratada pego no log do dev build: em `FeedScreen`,
+  `FoldersScreen` e `FolderDetailScreen`,
+  `setState(() => _algumaFuture = future)` faz o closure retornar o
+  próprio `Future` (atribuição é uma expressão que avalia pro valor
+  atribuído) — o Flutter rejeita isso em runtime. Acontecia sempre que
+  `_reload()`/`_reloadMimos()`/`_reloadMembers()` rodava, inclusive ao
+  voltar da tela de Detalhe. Trocado por corpo de bloco
+  (`setState(() { _algumaFuture = future; })`) nos quatro lugares onde
+  acontecia.
+- "Queixo" visual no shell desktop: a área de conteúdo não tinha a mesma
+  margem de 16px que a sidebar flutuante já tinha, sobrando uma borda
+  desalinhada acima dela.
+
 ## [0.0.12-alpha] - 2026-08-29
 
 ### Fixed

@@ -1,8 +1,14 @@
-/// Maps to `public.mimos`, with the parent folder's name/color embedded via
-/// the Postgrest `folders(name, color)` select (see MimoRepository).
+import 'tag.dart';
+
+/// Maps to `public.mimos`, with the parent folder's name/color and this
+/// mimo's tags embedded via the Postgrest select in MimoRepository
+/// (`folders(name, color)`, `mimo_tags(tags(...))`) — one round trip
+/// instead of N+1 queries, which is what the search/filter system needs
+/// to work against an already-fetched list.
 class Mimo {
   const Mimo({
     required this.id,
+    required this.ownerId,
     required this.title,
     required this.priority,
     required this.purchaseStatus,
@@ -15,9 +21,11 @@ class Mimo {
     this.originalUrl,
     this.storeDomain,
     this.price,
+    this.tags = const [],
   });
 
   final String id;
+  final String ownerId;
   final String? folderId;
   final String? folderName;
   final String? folderColor;
@@ -30,6 +38,7 @@ class Mimo {
   final String priority; // baixa | media | alta
   final String purchaseStatus; // desejado | comprado | arquivado
   final DateTime createdAt;
+  final List<MimoTag> tags;
 
   /// The Feed's core rule: no folder => "Desorganizado"; otherwise the
   /// folder's own name/color replace that tag entirely.
@@ -37,8 +46,11 @@ class Mimo {
 
   factory Mimo.fromJson(Map<String, dynamic> json) {
     final folder = json['folders'] as Map<String, dynamic>?;
+    final tagRows = json['mimo_tags'] as List?;
+
     return Mimo(
       id: json['id'] as String,
+      ownerId: json['owner_id'] as String,
       folderId: json['folder_id'] as String?,
       folderName: folder?['name'] as String?,
       folderColor: folder?['color'] as String?,
@@ -51,6 +63,11 @@ class Mimo {
       priority: json['priority'] as String? ?? 'media',
       purchaseStatus: json['purchase_status'] as String? ?? 'desejado',
       createdAt: DateTime.parse(json['created_at'] as String),
+      tags: tagRows == null
+          ? const []
+          : tagRows
+              .map((row) => MimoTag.fromJson((row as Map<String, dynamic>)['tags'] as Map<String, dynamic>))
+              .toList(),
     );
   }
 }

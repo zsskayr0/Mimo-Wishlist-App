@@ -68,7 +68,14 @@ class _HomeShellState extends State<HomeShell> {
               ? Stack(
                   children: [
                     Positioned.fill(
-                      child: Padding(padding: const EdgeInsets.only(left: 264), child: content),
+                      // Matches the sidebar's own 16px inset so content
+                      // starts flush with it instead of sitting higher —
+                      // the mismatch read as a stray edge poking out above
+                      // the sidebar's rounded top corner.
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(264, 16, 16, 16),
+                        child: content,
+                      ),
                     ),
                     Positioned(
                       left: 16,

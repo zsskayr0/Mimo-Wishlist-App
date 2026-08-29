@@ -10,13 +10,18 @@ class MimoRepository {
 
   final SupabaseClient _client;
 
+  /// Pulls the folder name/color and this mimo's tags in the same round
+  /// trip — the search/filter system works against an already-fetched
+  /// list, so every mimo needs its tags up front, not on demand.
+  static const _selectWithRelations = '*, folders(name, color), mimo_tags(tags(id, name, color, is_system))';
+
   Future<List<Mimo>> fetchFeed() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return const [];
 
     final rows = await _client
         .from('mimos')
-        .select('*, folders(name, color)')
+        .select(_selectWithRelations)
         .eq('owner_id', userId)
         .order('created_at', ascending: false);
 
@@ -32,7 +37,7 @@ class MimoRepository {
   Future<List<Mimo>> fetchByFolder(String folderId) async {
     final rows = await _client
         .from('mimos')
-        .select('*, folders(name, color)')
+        .select(_selectWithRelations)
         .eq('folder_id', folderId)
         .order('created_at', ascending: false);
 
@@ -44,7 +49,7 @@ class MimoRepository {
   Future<Mimo?> fetchById(String mimoId) async {
     final rows = await _client
         .from('mimos')
-        .select('*, folders(name, color)')
+        .select(_selectWithRelations)
         .eq('id', mimoId)
         .limit(1);
     final list = rows as List;
