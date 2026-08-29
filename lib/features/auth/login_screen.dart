@@ -71,15 +71,27 @@ class _LoginScreenState extends State<LoginScreen> {
           setState(() => _errorMessage = 'Esse nome de usuário já está em uso.');
           return;
         }
-        await client.auth.signUp(
+        final response = await client.auth.signUp(
           email: email,
           password: password,
           data: {'display_name': _nameController.text.trim(), 'username': username},
         );
+        // Projects with "Confirm email" on (the Supabase default) create the
+        // account but return no session — AuthGate's stream never fires,
+        // so without this the screen would just sit there looking broken.
+        if (response.session == null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Conta criada! Confira seu e-mail para confirmar antes de entrar.'),
+              duration: Duration(seconds: 6),
+            ),
+          );
+        }
       } else {
         await client.auth.signInWithPassword(email: email, password: password);
       }
-      // On success, AuthGate's stream rebuilds into the app automatically.
+      // On success with an active session, AuthGate's stream rebuilds into
+      // the app automatically.
     } on AuthException catch (e) {
       setState(() => _errorMessage = e.message);
     } catch (_) {
