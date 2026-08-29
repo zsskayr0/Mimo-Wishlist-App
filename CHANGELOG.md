@@ -4,6 +4,18 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.4-alpha] - 2026-08-29
+
+### Changed
+- Login/Cadastro (`lib/features/auth/login_screen.dart`) refeitos pra bater
+  com a referência visual fornecida: painel escuro dividido, imagem própria
+  em `assets/images/auth_background.jpg` no lado largo, form-only em telas
+  estreitas. Campos, checkbox "Lembrar de mim", "Esqueceu a senha?" (real,
+  via `resetPasswordForEmail`) e botões sociais (visuais, sem OAuth
+  configurado ainda) seguem o layout de referência.
+- `HomeShell`: barra inferior e rail lateral agora flutuam (margem, cantos
+  de 8px, blur) em vez de ficarem coladas na borda da tela.
+
 ## [0.0.3-alpha] - 2026-08-29
 
 ### Added

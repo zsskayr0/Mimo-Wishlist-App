@@ -131,7 +131,7 @@ class _FeedScreenState extends State<FeedScreen> {
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1100),
                       child: GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
                         // Max-extent (not a fixed count) so the grid gains
                         // columns on wide desktop windows instead of
                         // stretching two phone-width cards edge to edge.

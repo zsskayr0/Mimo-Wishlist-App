@@ -14,7 +14,7 @@ class SettingsScreen extends StatelessWidget {
 
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+        padding: const EdgeInsets.fromLTRB(20, 28, 20, 110),
         children: [
           const Text('Configurações', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),

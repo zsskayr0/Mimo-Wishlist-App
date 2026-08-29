@@ -87,7 +87,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
             children: [
               const Text('Amigos', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),

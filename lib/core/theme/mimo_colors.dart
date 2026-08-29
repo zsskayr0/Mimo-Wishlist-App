@@ -29,4 +29,13 @@ class MimoColors {
   static const tagPlumBg = Color(0xFFF1E1F5);
   static const tagSage = Color(0xFF3F7A5C);
   static const tagSageBg = Color(0xFFDCEFE4);
+
+  // Auth screen only — dark panel, kept separate from the light palette
+  // the rest of the app uses.
+  static const authBg = Color(0xFF100D1A);
+  static const authPanel = Color(0xFF17131F);
+  static const authInputBg = Color(0xFF1B1726);
+  static const authBorder = Color(0xFF2C2640);
+  static const authText = Color(0xFFF4F1FA);
+  static const authPlaceholder = Color(0xFF7C7398);
 }

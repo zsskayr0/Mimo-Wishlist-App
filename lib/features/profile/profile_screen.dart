@@ -28,7 +28,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+        padding: const EdgeInsets.fromLTRB(24, 40, 24, 110),
         children: [
           Center(
             child: Column(

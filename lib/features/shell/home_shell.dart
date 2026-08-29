@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../../core/layout/breakpoints.dart';
@@ -15,11 +17,16 @@ const _destinations = [
   (icon: Icons.tune, label: 'Config'),
 ];
 
+/// Chrome corner radius for the floating nav — bottom bar and sidebar both
+/// use it, so the two stay visually one system across the breakpoint.
+const _navRadius = 8.0;
+
 /// The app's chrome: Feed/Amigos/Perfil/Config plus the universal capture
-/// button, in two shapes picked by width (see [MimoBreakpoints]) —
-/// a bottom bar with a raised center button on phones, a left sidebar with
-/// a labelled button on desktop. Both wrap the same screens, so behaviour
-/// never depends on which chrome is showing.
+/// button, in two shapes picked by width (see [MimoBreakpoints]) — both
+/// floating (inset from the screen edge, blurred, rounded) rather than
+/// docked flush to it. Bumping [_feedRefreshTick] re-keys FeedScreen so it
+/// refetches after a successful capture, without reaching for a
+/// state-management package for one signal.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -57,24 +64,41 @@ class _HomeShellState extends State<HomeShell> {
         return Scaffold(
           backgroundColor: MimoColors.bg,
           body: desktop
-              ? Row(
+              ? Stack(
                   children: [
-                    _Sidebar(
-                      currentIndex: _tabIndex,
-                      onTabSelected: (index) => setState(() => _tabIndex = index),
-                      onAddPressed: _openCapture,
+                    Positioned.fill(
+                      child: Padding(padding: const EdgeInsets.only(left: 264), child: content),
                     ),
-                    const VerticalDivider(width: 1, color: MimoColors.border),
-                    Expanded(child: content),
+                    Positioned(
+                      left: 16,
+                      top: 16,
+                      bottom: 16,
+                      child: _FloatingSidebar(
+                        currentIndex: _tabIndex,
+                        onTabSelected: (index) => setState(() => _tabIndex = index),
+                        onAddPressed: _openCapture,
+                      ),
+                    ),
                   ],
                 )
-              : content,
-          bottomNavigationBar: desktop
-              ? null
-              : _BottomBar(
-                  currentIndex: _tabIndex,
-                  onTabSelected: (index) => setState(() => _tabIndex = index),
-                  onAddPressed: _openCapture,
+              : Stack(
+                  children: [
+                    Positioned.fill(child: content),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: SafeArea(
+                        top: false,
+                        minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: _FloatingBottomBar(
+                          currentIndex: _tabIndex,
+                          onTabSelected: (index) => setState(() => _tabIndex = index),
+                          onAddPressed: _openCapture,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
         );
       },
@@ -82,8 +106,8 @@ class _HomeShellState extends State<HomeShell> {
   }
 }
 
-class _Sidebar extends StatelessWidget {
-  const _Sidebar({
+class _FloatingSidebar extends StatelessWidget {
+  const _FloatingSidebar({
     required this.currentIndex,
     required this.onTabSelected,
     required this.onAddPressed,
@@ -97,7 +121,14 @@ class _Sidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 232,
-      color: MimoColors.surface,
+      decoration: BoxDecoration(
+        color: MimoColors.surface,
+        borderRadius: BorderRadius.circular(_navRadius),
+        border: Border.all(color: MimoColors.border),
+        boxShadow: [
+          BoxShadow(color: MimoColors.ink.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 8)),
+        ],
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,7 +154,7 @@ class _Sidebar extends StatelessWidget {
             style: FilledButton.styleFrom(
               backgroundColor: MimoColors.gradientA,
               padding: const EdgeInsets.symmetric(vertical: 13),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_navRadius)),
             ),
             icon: const Icon(Icons.add, size: 18),
             label: const Text('Novo mimo'),
@@ -143,9 +174,9 @@ class _Sidebar extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
         color: active ? MimoColors.gradientA.withValues(alpha: 0.1) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(_navRadius),
         child: InkWell(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(_navRadius),
           onTap: () => onTabSelected(index),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -170,8 +201,8 @@ class _Sidebar extends StatelessWidget {
   }
 }
 
-class _BottomBar extends StatelessWidget {
-  const _BottomBar({
+class _FloatingBottomBar extends StatelessWidget {
+  const _FloatingBottomBar({
     required this.currentIndex,
     required this.onTabSelected,
     required this.onAddPressed,
@@ -183,55 +214,65 @@ class _BottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: SizedBox(
-        height: 78,
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.topCenter,
-          children: [
-            Container(
-              decoration: const BoxDecoration(
-                color: MimoColors.surface,
-                border: Border(top: BorderSide(color: MimoColors.border)),
-              ),
-              child: Row(
-                children: [
-                  _navItem(0),
-                  _navItem(1),
-                  const Expanded(child: SizedBox()),
-                  _navItem(2),
-                  _navItem(3),
-                ],
-              ),
-            ),
-            Positioned(
-              top: -26,
-              child: GestureDetector(
-                onTap: onAddPressed,
-                child: Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: MimoColors.gradient,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: MimoColors.bg, width: 4),
-                    boxShadow: [
-                      BoxShadow(
-                        color: MimoColors.gradientA.withValues(alpha: 0.4),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(Icons.add, color: Colors.white),
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.topCenter,
+      children: [
+        Container(
+          height: 68,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_navRadius),
+            boxShadow: [
+              BoxShadow(color: MimoColors.ink.withValues(alpha: 0.12), blurRadius: 24, offset: const Offset(0, 10)),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(_navRadius),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: MimoColors.surface.withValues(alpha: 0.78),
+                  border: Border.all(color: MimoColors.border.withValues(alpha: 0.7)),
+                  borderRadius: BorderRadius.circular(_navRadius),
+                ),
+                child: Row(
+                  children: [
+                    _navItem(0),
+                    _navItem(1),
+                    const Expanded(child: SizedBox()),
+                    _navItem(2),
+                    _navItem(3),
+                  ],
                 ),
               ),
             ),
-          ],
+          ),
         ),
-      ),
+        Positioned(
+          top: -26,
+          child: GestureDetector(
+            onTap: onAddPressed,
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: MimoColors.gradient,
+                shape: BoxShape.circle,
+                border: Border.all(color: MimoColors.bg, width: 4),
+                boxShadow: [
+                  BoxShadow(
+                    color: MimoColors.gradientA.withValues(alpha: 0.4),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -244,15 +285,15 @@ class _BottomBar extends StatelessWidget {
       child: InkWell(
         onTap: () => onTabSelected(index),
         child: Padding(
-          padding: const EdgeInsets.only(top: 12, bottom: 8),
+          padding: const EdgeInsets.only(top: 10, bottom: 6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(item.icon, size: 21, color: color),
-              const SizedBox(height: 4),
+              Icon(item.icon, size: 20, color: color),
+              const SizedBox(height: 3),
               Text(
                 item.label,
-                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: color),
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
               ),
             ],
           ),
