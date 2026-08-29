@@ -4,6 +4,17 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.5-alpha] - 2026-08-29
+
+### Fixed
+- Configurações: os dois `ListTile` dentro de um `Container` decorado
+  perdiam o splash/ink por falta de um `Material` ancestral — achado ao
+  rodar o dev build (o framework acusa isso em runtime, `flutter analyze`
+  não pega). Envolvidos em `Material` próprio.
+- Versão exibida em Configurações agora vem de `package_info_plus` (lê o
+  `pubspec.yaml` de verdade) em vez de um texto fixo que ficava
+  desatualizado a cada bump.
+
 ## [0.0.4-alpha] - 2026-08-29
 
 ### Changed
