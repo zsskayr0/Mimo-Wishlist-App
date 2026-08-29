@@ -24,6 +24,10 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   late Future<List<Mimo>> _mimosFuture;
   late Future<List<FolderMember>> _membersFuture;
 
+  /// See FeedScreen for why this exists: makes a delete disappear
+  /// instantly instead of waiting on the next fetch to land.
+  final Set<String> _hiddenIds = {};
+
   bool get _isOwner => widget.folder.ownerId == Supabase.instance.client.auth.currentUser?.id;
 
   @override
@@ -42,14 +46,18 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     if (invited == true) _reloadMembers();
   }
 
-  void _reloadMimos() {
-    setState(() => _mimosFuture = MimoRepository().fetchByFolder(widget.folder.id));
+  Future<void> _reloadMimos() async {
+    final future = MimoRepository().fetchByFolder(widget.folder.id);
+    setState(() => _mimosFuture = future);
+    await future;
+    if (mounted) setState(_hiddenIds.clear);
   }
 
   Future<void> _openDetail(Mimo mimo) async {
-    await Navigator.of(context).push(
+    final deleted = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => MimoDetailScreen(mimo: mimo)),
     );
+    if (deleted == true) setState(() => _hiddenIds.add(mimo.id));
     _reloadMimos();
   }
 
@@ -121,7 +129,9 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    final mimos = snapshot.data ?? const [];
+                    final mimos = (snapshot.data ?? const [])
+                        .where((m) => !_hiddenIds.contains(m.id))
+                        .toList();
                     if (mimos.isEmpty) {
                       return Center(
                         child: Text(

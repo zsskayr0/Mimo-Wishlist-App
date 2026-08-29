@@ -29,17 +29,20 @@ class FolderRepository {
     return (rows as List).map((row) => Folder.fromJson(row as Map<String, dynamic>)).toList();
   }
 
-  Future<void> createFolder({required String name, required String color}) async {
+  /// Returns the created row (rather than void) so the caller can show it
+  /// immediately instead of waiting on a full list refetch.
+  Future<Folder> createFolder({required String name, required String color}) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) {
       throw StateError('createFolder called with no signed-in user');
     }
 
-    await _client.from('folders').insert({
-      'owner_id': userId,
-      'name': name,
-      'color': color,
-    });
+    final inserted = await _client
+        .from('folders')
+        .insert({'owner_id': userId, 'name': name, 'color': color})
+        .select()
+        .single();
+    return Folder.fromJson(inserted);
   }
 
   Future<List<FolderMember>> fetchMembers(String folderId) async {

@@ -2,6 +2,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/tag.dart';
 
+/// Thrown by [TagRepository.createTag] when the user already has a tag
+/// with that name.
+class TagAlreadyExistsException implements Exception {}
+
 class TagRepository {
   TagRepository({SupabaseClient? client}) : _client = client ?? Supabase.instance.client;
 
@@ -28,5 +32,29 @@ class TagRepository {
     return (rows as List)
         .map((row) => MimoTag.fromJson((row as Map<String, dynamic>)['tags'] as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<MimoTag> createTag(String name) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw StateError('createTag called with no signed-in user');
+    }
+
+    try {
+      final inserted = await _client
+          .from('tags')
+          .insert({
+            'owner_id': userId,
+            'name': name.trim(),
+            'color': '#7C5AE0',
+            'is_system': false,
+          })
+          .select()
+          .single();
+      return MimoTag.fromJson(inserted);
+    } on PostgrestException catch (e) {
+      if (e.code == '23505') throw TagAlreadyExistsException(); // unique_violation
+      rethrow;
+    }
   }
 }

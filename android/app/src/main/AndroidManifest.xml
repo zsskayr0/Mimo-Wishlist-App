@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- image_picker: camera capture for a mimo's cover photo. Gallery
+         picks go through the system Photo Picker on modern Android and
+         need no declared permission. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
         android:label="mimo"
         android:name="${applicationName}"

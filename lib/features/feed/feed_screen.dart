@@ -18,6 +18,13 @@ class _FeedScreenState extends State<FeedScreen> {
   final _repository = MimoRepository();
   late Future<List<Mimo>> _feedFuture;
 
+  /// Ids removed optimistically (a confirmed delete) that the current
+  /// [_feedFuture] snapshot might still list, because it was fetched
+  /// before the delete happened. Filtered out at render time so removal
+  /// is instant instead of waiting on the next network round-trip; cleared
+  /// whenever a fresh fetch lands, since that fetch is already correct.
+  final Set<String> _hiddenIds = {};
+
   @override
   void initState() {
     super.initState();
@@ -28,6 +35,7 @@ class _FeedScreenState extends State<FeedScreen> {
     final future = _repository.fetchFeed();
     setState(() => _feedFuture = future);
     await future;
+    if (mounted) setState(_hiddenIds.clear);
   }
 
   void _openFolders() {
@@ -35,9 +43,10 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Future<void> _openDetail(Mimo mimo) async {
-    await Navigator.of(context).push(
+    final deleted = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => MimoDetailScreen(mimo: mimo)),
     );
+    if (deleted == true) setState(() => _hiddenIds.add(mimo.id));
     _reload();
   }
 
@@ -126,7 +135,9 @@ class _FeedScreenState extends State<FeedScreen> {
                     onRetry: _reload,
                   );
                 }
-                final mimos = snapshot.data ?? const [];
+                final mimos = (snapshot.data ?? const [])
+                    .where((m) => !_hiddenIds.contains(m.id))
+                    .toList();
                 if (mimos.isEmpty) {
                   return _MessageState(
                     icon: Icons.favorite_border,

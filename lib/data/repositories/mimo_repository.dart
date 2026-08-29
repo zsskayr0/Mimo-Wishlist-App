@@ -79,6 +79,7 @@ class MimoRepository {
     required String title,
     String? originalUrl,
     String? storeDomain,
+    String? coverImageUrl,
     double? price,
     String priority = 'media',
     String? folderId,
@@ -96,6 +97,7 @@ class MimoRepository {
           'title': title,
           'original_url': originalUrl,
           'store_domain': storeDomain,
+          'cover_image_url': coverImageUrl,
           'price': price,
           'priority': priority,
           'folder_id': folderId,
@@ -114,6 +116,37 @@ class MimoRepository {
     return mimoId;
   }
 
+  Future<void> updateMimo({
+    required String mimoId,
+    required String title,
+    String? originalUrl,
+    String? storeDomain,
+    String? coverImageUrl,
+    double? price,
+    required String priority,
+    String? folderId,
+    required List<String> tagIds,
+  }) async {
+    await _client.from('mimos').update({
+      'title': title,
+      'original_url': originalUrl,
+      'store_domain': storeDomain,
+      'cover_image_url': coverImageUrl,
+      'price': price,
+      'priority': priority,
+      'folder_id': folderId,
+    }).eq('id', mimoId);
+
+    // Simplest correct way to reconcile the tag set: clear and re-insert
+    // the current selection, rather than diffing adds/removes.
+    await _client.from('mimo_tags').delete().eq('mimo_id', mimoId);
+    if (tagIds.isNotEmpty) {
+      await _client.from('mimo_tags').insert([
+        for (final tagId in tagIds) {'mimo_id': mimoId, 'tag_id': tagId},
+      ]);
+    }
+  }
+
   /// "Duplicar em outra pasta" — a mimo has at most one folder, so putting
   /// it in a second one is a brand-new row, never a reassignment of the
   /// original. Copies the fields that make sense to carry over; tags are
@@ -123,6 +156,7 @@ class MimoRepository {
       title: mimo.title,
       originalUrl: mimo.originalUrl,
       storeDomain: mimo.storeDomain,
+      coverImageUrl: mimo.coverImageUrl,
       price: mimo.price,
       priority: mimo.priority,
       folderId: folderId,

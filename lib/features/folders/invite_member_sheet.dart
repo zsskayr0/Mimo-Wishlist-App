@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/mimo_colors.dart';
+import '../../core/widgets/gradient_button.dart';
 import '../../data/repositories/folder_repository.dart';
 
 class InviteMemberSheet extends StatefulWidget {
@@ -122,12 +123,8 @@ class _InviteMemberSheetState extends State<InviteMemberSheet> {
                 Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
               ],
               const SizedBox(height: 20),
-              FilledButton(
+              GradientButton(
                 onPressed: _isSaving ? null : _invite,
-                style: FilledButton.styleFrom(
-                  backgroundColor: MimoColors.gradientA,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                ),
                 child: _isSaving
                     ? const SizedBox(
                         width: 20,

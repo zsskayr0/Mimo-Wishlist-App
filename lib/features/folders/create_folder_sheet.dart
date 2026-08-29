@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/mimo_colors.dart';
+import '../../core/widgets/gradient_button.dart';
+import '../../data/models/folder.dart';
 import '../../data/repositories/folder_repository.dart';
 
 const _folderPalette = [
@@ -15,8 +17,10 @@ const _folderPalette = [
 class CreateFolderSheet extends StatefulWidget {
   const CreateFolderSheet({super.key});
 
-  static Future<bool?> show(BuildContext context) {
-    return showModalBottomSheet<bool>(
+  /// Returns the created [Folder] (not just a success flag) so the caller
+  /// can show it right away instead of waiting on a refetch.
+  static Future<Folder?> show(BuildContext context) {
+    return showModalBottomSheet<Folder>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -52,8 +56,8 @@ class _CreateFolderSheetState extends State<CreateFolderSheet> {
     });
 
     try {
-      await _repository.createFolder(name: _nameController.text.trim(), color: _selectedColor);
-      if (mounted) Navigator.of(context).pop(true);
+      final folder = await _repository.createFolder(name: _nameController.text.trim(), color: _selectedColor);
+      if (mounted) Navigator.of(context).pop(folder);
     } catch (_) {
       setState(() => _errorMessage = 'Não deu pra criar a pasta. Tenta de novo.');
     } finally {
@@ -129,12 +133,8 @@ class _CreateFolderSheetState extends State<CreateFolderSheet> {
                 Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
               ],
               const SizedBox(height: 20),
-              FilledButton(
+              GradientButton(
                 onPressed: _isSaving ? null : _save,
-                style: FilledButton.styleFrom(
-                  backgroundColor: MimoColors.gradientA,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                ),
                 child: _isSaving
                     ? const SizedBox(
                         width: 20,

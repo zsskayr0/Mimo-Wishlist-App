@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/mimo_colors.dart';
+import '../../core/widgets/gradient_button.dart';
 import '../../data/models/mimo.dart';
 import '../../data/models/tag.dart';
 import '../../data/repositories/folder_repository.dart';
 import '../../data/repositories/mimo_repository.dart';
 import '../../data/repositories/tag_repository.dart';
+import '../capture/quick_capture_sheet.dart';
 import '../folders/folder_picker_sheet.dart';
 
 class MimoDetailScreen extends StatefulWidget {
@@ -67,6 +69,18 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
     if (!launched && mounted) {
       messenger.showSnackBar(const SnackBar(content: Text('Não deu pra abrir o link.')));
     }
+  }
+
+  Future<void> _edit() async {
+    final saved = await QuickCaptureSheet.show(context, editingMimo: _mimo);
+    if (saved != true || !mounted) return;
+    final refreshed = await _mimoRepository.fetchById(_mimo.id);
+    final tags = TagRepository().fetchTagsForMimo(_mimo.id);
+    if (!mounted) return;
+    setState(() {
+      if (refreshed != null) _mimo = refreshed;
+      _tagsFuture = tags;
+    });
   }
 
   Future<void> _duplicate() async {
@@ -150,15 +164,42 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
                             ),
                             const Spacer(),
                             PopupMenuButton<String>(
-                              icon: Icon(Icons.more_horiz, color: colors.ink),
+                              tooltip: 'Opções',
+                              padding: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
                               onSelected: (value) {
+                                if (value == 'edit') _edit();
+                                if (value == 'open_link') _openStore();
                                 if (value == 'duplicate') _duplicate();
                                 if (value == 'delete') _confirmDelete();
                               },
-                              itemBuilder: (context) => const [
-                                PopupMenuItem(value: 'duplicate', child: Text('Duplicar em outra pasta')),
-                                PopupMenuItem(value: 'delete', child: Text('Excluir mimo')),
+                              itemBuilder: (context) => [
+                                const PopupMenuItem(value: 'edit', child: Text('Editar mimo')),
+                                if (_mimo.originalUrl != null)
+                                  const PopupMenuItem(value: 'open_link', child: Text('Abrir link')),
+                                const PopupMenuItem(value: 'duplicate', child: Text('Duplicar em outra pasta')),
+                                const PopupMenuItem(
+                                  value: 'delete',
+                                  child: Text('Excluir mimo', style: TextStyle(color: Colors.red)),
+                                ),
                               ],
+                              child: Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: colors.surface,
+                                  border: Border.all(color: colors.border),
+                                  borderRadius: BorderRadius.circular(11),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: colors.ink.withValues(alpha: 0.06),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(Icons.more_horiz, size: 18, color: colors.ink),
+                              ),
                             ),
                           ],
                         ),
@@ -298,19 +339,14 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
                 left: 20,
                 right: 20,
                 bottom: 20,
-                child: FilledButton(
+                child: GradientButton(
                   onPressed: _openStore,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: MimoColors.gradientA,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-                  ),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Abrir na loja', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('Abrir na loja'),
                       SizedBox(width: 8),
-                      Icon(Icons.north_east, size: 16, color: Colors.white),
+                      Icon(Icons.north_east),
                     ],
                   ),
                 ),

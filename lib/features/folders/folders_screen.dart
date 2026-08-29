@@ -17,6 +17,11 @@ class _FoldersScreenState extends State<FoldersScreen> {
   final _repository = FolderRepository();
   late Future<List<Folder>> _foldersFuture;
 
+  /// A just-created folder, shown immediately instead of waiting on the
+  /// next fetch to include it — same idea as the delete-side fix in
+  /// FeedScreen/FolderDetailScreen, mirrored for additions.
+  final List<Folder> _optimisticFolders = [];
+
   @override
   void initState() {
     super.initState();
@@ -27,11 +32,13 @@ class _FoldersScreenState extends State<FoldersScreen> {
     final future = _repository.fetchFolders();
     setState(() => _foldersFuture = future);
     await future;
+    if (mounted) setState(_optimisticFolders.clear);
   }
 
   Future<void> _openCreateFolder() async {
     final created = await CreateFolderSheet.show(context);
-    if (created == true) _reload();
+    if (created != null) setState(() => _optimisticFolders.insert(0, created));
+    _reload();
   }
 
   @override
@@ -58,10 +65,15 @@ class _FoldersScreenState extends State<FoldersScreen> {
           child: FutureBuilder<List<Folder>>(
             future: _foldersFuture,
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+              if (snapshot.connectionState == ConnectionState.waiting && _optimisticFolders.isEmpty) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final folders = snapshot.data ?? const [];
+              final fetched = snapshot.data ?? const [];
+              final knownIds = fetched.map((f) => f.id).toSet();
+              final folders = [
+                ..._optimisticFolders.where((f) => !knownIds.contains(f.id)),
+                ...fetched,
+              ];
               if (folders.isEmpty) {
                 return Center(
                   child: Padding(

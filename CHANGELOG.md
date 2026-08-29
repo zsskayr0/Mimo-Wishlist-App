@@ -4,6 +4,40 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.11-alpha] - 2026-08-29
+
+### Fixed
+- Bug real de estado: criar pasta/excluir mimo só refletia na lista depois
+  de sair da tela e voltar. A causa não era o refetch em si — era só
+  demorar um round-trip a mais que o usuário esperava ver. Resolvido com
+  atualização otimista (o item aparece/some na hora, localmente) em
+  `FeedScreen`, `FolderDetailScreen` e `FoldersScreen`.
+- Botões "gradiente" (Salvar no Feed, Abrir na loja, Criar pasta, Convidar)
+  eram na verdade cor sólida — `FilledButton.styleFrom` não pinta
+  `Gradient`. Criado `GradientButton` (usa `Ink` de verdade) e aplicado
+  nos quatro.
+
+### Added
+- Busca automática de dados do link: colar uma URL agora busca Open Graph
+  e JSON-LD da própria página (sem servidor) e preenche título, preço e
+  capa quando esses campos ainda estão vazios
+  (`lib/data/services/link_metadata_service.dart`).
+- Captura de imagem real: escolher da galeria/câmera, recorte 1:1 numa
+  tela própria (`crop_your_image`, funciona no Windows — os pacotes
+  nativos de crop não funcionam lá), badge circular preto no canto da
+  capa (vira "+" sem imagem, "recortar" com imagem; com imagem, oferece
+  recortar de novo ou trocar). Upload pro Storage do Supabase
+  (`006_cover_storage.sql` — mais uma migration pra rodar).
+- Editar mimo: o menu "···" do Detalhe agora abre a Captura Rápida
+  pré-preenchida; salvar atualiza a linha em vez de criar outra.
+- Criar tag nova direto da Captura Rápida (botão "+" ao lado das tags).
+- Botão de opções do Detalhe do Mimo redesenhado (quadrado branco
+  arredondado com sombra, igual ao resto do app) e com "Abrir link"
+  adicionado ao menu.
+- Campos Título/Preço/Link da Captura Rápida em rótulo próprio de 10px
+  (não mais o label flutuante do Material, que encolhia sozinho) e a capa
+  em 80×80.
+
 ## [0.0.10-alpha] - 2026-08-29
 
 ### Fixed
