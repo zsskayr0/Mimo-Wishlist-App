@@ -6,12 +6,14 @@ import '../../../data/models/mimo.dart';
 /// One grid card. The Desorganizado/Pasta pill is mutually exclusive by
 /// construction — it reads straight off [Mimo.isUnorganized], never both.
 ///
-/// The cover is `Expanded` rather than a fixed `AspectRatio`: the text
-/// block below it (title, up to 2 lines, plus price and the status pill)
-/// has an intrinsic height that doesn't scale with card width, while an
-/// aspect-ratio'd image does — at some grid widths that mismatch made the
-/// two together taller than the cell, overflowing it. Expanded just takes
-/// whatever height is left after the text block, so it can't happen.
+/// The cover is a true 1:1 `AspectRatio` — mimo covers are meant to be
+/// square (the blueprint's "recorte 1x1" rule; see the real crop step in
+/// the capture sheet). The grid's `childAspectRatio` is what has to do
+/// the accommodating: it's tuned for the width `SliverGridDelegateWith-
+/// MaxCrossAxisExtent` actually produces (roughly 150-190px regardless of
+/// window size — the delegate adds columns rather than growing them past
+/// the max), so the image-height-plus-text-block total fits at every
+/// width the delegate can hand this card.
 class MimoCard extends StatelessWidget {
   const MimoCard({super.key, required this.mimo, this.onTap});
 
@@ -55,7 +57,8 @@ class MimoCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
+              AspectRatio(
+                aspectRatio: 1,
                 child: Container(
                   width: double.infinity,
                   color: colors.placeholder,

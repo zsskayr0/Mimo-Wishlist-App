@@ -169,14 +169,11 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
                               onSelected: (value) {
                                 if (value == 'edit') _edit();
-                                if (value == 'open_link') _openStore();
                                 if (value == 'duplicate') _duplicate();
                                 if (value == 'delete') _confirmDelete();
                               },
                               itemBuilder: (context) => [
                                 const PopupMenuItem(value: 'edit', child: Text('Editar mimo')),
-                                if (_mimo.originalUrl != null)
-                                  const PopupMenuItem(value: 'open_link', child: Text('Abrir link')),
                                 const PopupMenuItem(value: 'duplicate', child: Text('Duplicar em outra pasta')),
                                 const PopupMenuItem(
                                   value: 'delete',

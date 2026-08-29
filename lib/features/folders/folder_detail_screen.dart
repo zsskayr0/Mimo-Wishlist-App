@@ -146,7 +146,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                         maxCrossAxisExtent: 190,
                         mainAxisSpacing: 14,
                         crossAxisSpacing: 14,
-                        childAspectRatio: 0.72,
+                        childAspectRatio: 0.52,
                       ),
                       itemCount: mimos.length,
                       itemBuilder: (context, index) => MimoCard(

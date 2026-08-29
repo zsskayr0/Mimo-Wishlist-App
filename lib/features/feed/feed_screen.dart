@@ -159,7 +159,10 @@ class _FeedScreenState extends State<FeedScreen> {
                           maxCrossAxisExtent: 190,
                           mainAxisSpacing: 14,
                           crossAxisSpacing: 14,
-                          childAspectRatio: 0.72,
+                          // 1:1 image + up to 2 title lines + price + pill;
+                          // tuned for the ~150-190px width this delegate
+                          // actually produces (see MimoCard's doc comment).
+                          childAspectRatio: 0.52,
                         ),
                         itemCount: mimos.length,
                         itemBuilder: (context, index) => MimoCard(

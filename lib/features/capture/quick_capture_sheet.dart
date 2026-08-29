@@ -208,17 +208,11 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
   // ---------------------------------------------------------------------
 
   Future<void> _createTag() async {
-    final controller = TextEditingController();
-    final name = await showDialog<String>(
+    final name = await showModalBottomSheet<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Nova tag'),
-        content: TextField(controller: controller, autofocus: true, decoration: const InputDecoration(hintText: 'Nome da tag')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('Criar')),
-        ],
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const _NewTagSheet(),
     );
     if (name == null || name.isEmpty || !mounted) return;
 
@@ -260,9 +254,21 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
     });
 
     try {
+      // A failed upload shouldn't cost the user their title/price/tags too —
+      // save without the cover and say so, rather than blocking the whole
+      // mimo on one flaky request (or a bucket that isn't set up yet).
       String? coverImageUrl = _existingCoverUrl;
       if (_coverBytes != null) {
-        coverImageUrl = await ImageUploadService().uploadCover(_coverBytes!);
+        try {
+          coverImageUrl = await ImageUploadService().uploadCover(_coverBytes!);
+        } catch (_) {
+          coverImageUrl = _existingCoverUrl;
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Salvo sem a capa — não deu pra enviar a imagem.')),
+            );
+          }
+        }
       }
 
       final priceText = _priceController.text.trim().replaceAll(',', '.');
@@ -395,10 +401,12 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _FieldCaption('TÍTULO', colors: colors),
                           TextFormField(
                             controller: _titleController,
+                            textAlign: TextAlign.left,
                             decoration: _bareField(colors),
                             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                             validator: (v) => (v == null || v.trim().isEmpty) ? 'Dá um nome pro mimo' : null,
@@ -407,6 +415,7 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
                           _FieldCaption('PREÇO', colors: colors),
                           TextFormField(
                             controller: _priceController,
+                            textAlign: TextAlign.left,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             decoration: _bareField(colors).copyWith(prefixText: 'R\$ '),
                             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.inkSoft),
@@ -714,6 +723,80 @@ class _TagChip extends StatelessWidget {
         child: Text(
           '#$label',
           style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: selected ? colors.bg : colors.tagPlum),
+        ),
+      ),
+    );
+  }
+}
+
+class _NewTagSheet extends StatefulWidget {
+  const _NewTagSheet();
+
+  @override
+  State<_NewTagSheet> createState() => _NewTagSheetState();
+}
+
+class _NewTagSheetState extends State<_NewTagSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _create() {
+    if (!_formKey.currentState!.validate()) return;
+    Navigator.of(context).pop(_nameController.text.trim());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(color: colors.placeholder, borderRadius: BorderRadius.circular(3)),
+                ),
+              ),
+              const Text('Nova tag', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _nameController,
+                autofocus: true,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(labelText: 'Nome da tag'),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Dá um nome pra tag' : null,
+                onFieldSubmitted: (_) => _create(),
+              ),
+              const SizedBox(height: 20),
+              GradientButton(onPressed: _create, child: const Text('Criar')),
+              const SizedBox(height: 10),
+              Center(
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancelar'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

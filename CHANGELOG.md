@@ -4,6 +4,29 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.12-alpha] - 2026-08-29
+
+### Fixed
+- Salvar um mimo falhava por completo quando o upload da capa dava erro
+  (ex.: a migration 006 ainda não tinha sido rodada) — agora um upload
+  malsucedido só deixa o mimo sem capa, o resto salva normalmente.
+- Card do Feed com proporção errada: a correção anterior do overflow
+  (`Expanded` no lugar do `AspectRatio`) resolveu o estouro mas abriu mão
+  do 1:1. Voltou a ser `AspectRatio(1)` de verdade, com o
+  `childAspectRatio` do grid recalibrado (0.52) pra realmente caber
+  imagem quadrada + texto na faixa de largura que o grid produz.
+- Título/Preço da Captura Rápida apareciam centralizados — a `Column` que
+  os envolve não tinha `crossAxisAlignment: CrossAxisAlignment.start`
+  (o padrão do Flutter é centralizado). Corrigido, com `textAlign.left`
+  explícito nos dois campos por garantia.
+- Diálogo de "Nova tag" usava o `AlertDialog` genérico do Material, fora
+  do padrão do resto do app — refeito como bottom sheet (handle, título,
+  botão com gradiente) igual às outras telas de criação.
+
+### Changed
+- Removida a opção "Abrir link" do menu "···" do Detalhe do Mimo —
+  redundante com o botão "Abrir na loja" que já fica fixo embaixo.
+
 ## [0.0.11-alpha] - 2026-08-29
 
 ### Fixed
