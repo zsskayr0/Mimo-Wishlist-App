@@ -65,12 +65,13 @@ class _CreateFolderSheetState extends State<CreateFolderSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
-        decoration: const BoxDecoration(
-          color: MimoColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         ),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
         child: Form(
@@ -85,7 +86,7 @@ class _CreateFolderSheetState extends State<CreateFolderSheet> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: MimoColors.placeholder,
+                    color: colors.placeholder,
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),
@@ -99,7 +100,7 @@ class _CreateFolderSheetState extends State<CreateFolderSheet> {
                 validator: (value) => (value == null || value.trim().isEmpty) ? 'Dá um nome pra pasta' : null,
               ),
               const SizedBox(height: 16),
-              const Text('Cor', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: MimoColors.inkFaint)),
+              Text('Cor', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: colors.inkFaint)),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -115,7 +116,7 @@ class _CreateFolderSheetState extends State<CreateFolderSheet> {
                             color: _colorFromHex(hex),
                             shape: BoxShape.circle,
                             border: _selectedColor == hex
-                                ? Border.all(color: MimoColors.ink, width: 2.5)
+                                ? Border.all(color: colors.ink, width: 2.5)
                                 : null,
                           ),
                         ),

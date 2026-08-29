@@ -20,20 +20,23 @@ class MimoCard extends StatelessWidget {
     return 'R\$ $intPart,${parts[1]}';
   }
 
-  Color _folderColor() {
+  Color _folderColor(MimoColors colors) {
     final hex = mimo.folderColor;
-    if (hex == null) return MimoColors.tagGold;
+    if (hex == null) return colors.tagGold;
     final clean = hex.replaceFirst('#', '');
     return Color(int.parse('FF$clean', radix: 16));
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
+    final folderColor = _folderColor(colors);
+
     return Container(
       decoration: BoxDecoration(
-        color: MimoColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: MimoColors.border),
+        border: Border.all(color: colors.border),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -42,10 +45,10 @@ class MimoCard extends StatelessWidget {
           AspectRatio(
             aspectRatio: 1.15,
             child: Container(
-              color: MimoColors.placeholder,
+              color: colors.placeholder,
               alignment: Alignment.center,
               child: mimo.coverImageUrl == null
-                  ? Icon(Icons.image_outlined, color: MimoColors.inkFaint.withValues(alpha: 0.8), size: 30)
+                  ? Icon(Icons.image_outlined, color: colors.inkFaint.withValues(alpha: 0.8), size: 30)
                   : Image.network(mimo.coverImageUrl!, fit: BoxFit.cover),
             ),
           ),
@@ -65,14 +68,14 @@ class MimoCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     _formatPrice(mimo.price!),
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: MimoColors.inkSoft),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.inkSoft),
                   ),
                 ],
                 const SizedBox(height: 6),
                 _StatusPill(
                   label: mimo.isUnorganized ? 'Desorganizado' : 'Pasta: ${mimo.folderName ?? '—'}',
-                  color: mimo.isUnorganized ? MimoColors.tagGray : _folderColor(),
-                  background: mimo.isUnorganized ? MimoColors.tagGrayBg : _folderColor().withValues(alpha: 0.16),
+                  color: mimo.isUnorganized ? colors.tagGray : folderColor,
+                  background: mimo.isUnorganized ? colors.tagGrayBg : folderColor.withValues(alpha: 0.16),
                 ),
               ],
             ),

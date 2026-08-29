@@ -36,10 +36,11 @@ class _FoldersScreenState extends State<FoldersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     return Scaffold(
-      backgroundColor: MimoColors.bg,
+      backgroundColor: colors.bg,
       appBar: AppBar(
-        backgroundColor: MimoColors.bg,
+        backgroundColor: colors.bg,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: const Text('Pastas'),
@@ -68,12 +69,12 @@ class _FoldersScreenState extends State<FoldersScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.folder_outlined, size: 32, color: MimoColors.inkFaint),
+                        Icon(Icons.folder_outlined, size: 32, color: colors.inkFaint),
                         const SizedBox(height: 12),
                         Text(
                           'Nenhuma pasta ainda.\nToque em + para criar a primeira.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: MimoColors.inkSoft),
+                          style: TextStyle(color: colors.inkSoft),
                         ),
                       ],
                     ),
@@ -112,8 +113,9 @@ class _FolderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     return Material(
-      color: MimoColors.surface,
+      color: colors.surface,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -121,7 +123,7 @@ class _FolderRow extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            border: Border.all(color: MimoColors.border),
+            border: Border.all(color: colors.border),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Row(
@@ -146,7 +148,7 @@ class _FolderRow extends StatelessWidget {
                       children: [
                         Text(
                           '${folder.mimoCount} ${folder.mimoCount == 1 ? 'mimo' : 'mimos'}',
-                          style: TextStyle(fontSize: 12, color: MimoColors.inkFaint, fontWeight: FontWeight.w600),
+                          style: TextStyle(fontSize: 12, color: colors.inkFaint, fontWeight: FontWeight.w600),
                         ),
                         if (folder.isShared) ...[
                           const SizedBox(width: 8),
@@ -156,7 +158,7 @@ class _FolderRow extends StatelessWidget {
                               color: MimoColors.gradientA.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(999),
                             ),
-                            child: Text(
+                            child: const Text(
                               'Compartilhada',
                               style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: MimoColors.gradientA),
                             ),
@@ -167,7 +169,7 @@ class _FolderRow extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: MimoColors.inkFaint, size: 20),
+              Icon(Icons.chevron_right, color: colors.inkFaint, size: 20),
             ],
           ),
         ),

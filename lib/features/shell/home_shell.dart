@@ -50,6 +50,7 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     final tabs = [
       FeedScreen(key: ValueKey('feed-$_feedRefreshTick')),
       const FriendsScreen(),
@@ -62,7 +63,7 @@ class _HomeShellState extends State<HomeShell> {
       builder: (context, constraints) {
         final desktop = MimoBreakpoints.isDesktop(constraints.maxWidth);
         return Scaffold(
-          backgroundColor: MimoColors.bg,
+          backgroundColor: colors.bg,
           body: desktop
               ? Stack(
                   children: [
@@ -119,14 +120,15 @@ class _FloatingSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     return Container(
       width: 232,
       decoration: BoxDecoration(
-        color: MimoColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(_navRadius),
-        border: Border.all(color: MimoColors.border),
+        border: Border.all(color: colors.border),
         boxShadow: [
-          BoxShadow(color: MimoColors.ink.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 8)),
+          BoxShadow(color: colors.ink.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 8)),
         ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
@@ -145,7 +147,7 @@ class _FloatingSidebar extends StatelessWidget {
                 child: const Icon(Icons.favorite, color: Colors.white, size: 15),
               ),
               const SizedBox(width: 10),
-              const Text('Mimo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Mimo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colors.ink)),
             ],
           ),
           const SizedBox(height: 28),
@@ -160,13 +162,13 @@ class _FloatingSidebar extends StatelessWidget {
             label: const Text('Novo mimo'),
           ),
           const SizedBox(height: 20),
-          for (var i = 0; i < _destinations.length; i++) _railItem(i),
+          for (var i = 0; i < _destinations.length; i++) _railItem(colors, i),
         ],
       ),
     );
   }
 
-  Widget _railItem(int index) {
+  Widget _railItem(MimoColors colors, int index) {
     final item = _destinations[index];
     final active = index == currentIndex;
 
@@ -182,14 +184,14 @@ class _FloatingSidebar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             child: Row(
               children: [
-                Icon(item.icon, size: 20, color: active ? MimoColors.gradientA : MimoColors.inkSoft),
+                Icon(item.icon, size: 20, color: active ? MimoColors.gradientA : colors.inkSoft),
                 const SizedBox(width: 12),
                 Text(
                   item.label,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: active ? MimoColors.gradientA : MimoColors.inkSoft,
+                    color: active ? MimoColors.gradientA : colors.inkSoft,
                   ),
                 ),
               ],
@@ -214,6 +216,7 @@ class _FloatingBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     return Stack(
       clipBehavior: Clip.none,
       alignment: Alignment.topCenter,
@@ -223,7 +226,7 @@ class _FloatingBottomBar extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(_navRadius),
             boxShadow: [
-              BoxShadow(color: MimoColors.ink.withValues(alpha: 0.12), blurRadius: 24, offset: const Offset(0, 10)),
+              BoxShadow(color: colors.ink.withValues(alpha: 0.12), blurRadius: 24, offset: const Offset(0, 10)),
             ],
           ),
           child: ClipRRect(
@@ -232,17 +235,17 @@ class _FloatingBottomBar extends StatelessWidget {
               filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
               child: Container(
                 decoration: BoxDecoration(
-                  color: MimoColors.surface.withValues(alpha: 0.78),
-                  border: Border.all(color: MimoColors.border.withValues(alpha: 0.7)),
+                  color: colors.surface.withValues(alpha: 0.78),
+                  border: Border.all(color: colors.border.withValues(alpha: 0.7)),
                   borderRadius: BorderRadius.circular(_navRadius),
                 ),
                 child: Row(
                   children: [
-                    _navItem(0),
-                    _navItem(1),
+                    _navItem(colors, 0),
+                    _navItem(colors, 1),
                     const Expanded(child: SizedBox()),
-                    _navItem(2),
-                    _navItem(3),
+                    _navItem(colors, 2),
+                    _navItem(colors, 3),
                   ],
                 ),
               ),
@@ -259,7 +262,7 @@ class _FloatingBottomBar extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: MimoColors.gradient,
                 shape: BoxShape.circle,
-                border: Border.all(color: MimoColors.bg, width: 4),
+                border: Border.all(color: colors.bg, width: 4),
                 boxShadow: [
                   BoxShadow(
                     color: MimoColors.gradientA.withValues(alpha: 0.4),
@@ -276,10 +279,10 @@ class _FloatingBottomBar extends StatelessWidget {
     );
   }
 
-  Widget _navItem(int index) {
+  Widget _navItem(MimoColors colors, int index) {
     final item = _destinations[index];
     final active = index == currentIndex;
-    final color = active ? MimoColors.gradientA : MimoColors.inkFaint;
+    final color = active ? MimoColors.gradientA : colors.inkFaint;
 
     return Expanded(
       child: InkWell(

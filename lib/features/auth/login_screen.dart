@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/layout/breakpoints.dart';
@@ -19,9 +20,12 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
+
+  static final _usernamePattern = RegExp(r'^[a-zA-Z0-9_]{3,20}$');
 
   bool _isSignUp = false;
   bool _obscurePassword = true;
@@ -33,6 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
@@ -54,19 +59,25 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = null;
     });
 
-    final auth = Supabase.instance.client.auth;
+    final client = Supabase.instance.client;
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
     try {
       if (_isSignUp) {
-        await auth.signUp(
+        final username = _usernameController.text.trim().toLowerCase();
+        final taken = await client.from('users').select('id').eq('username', username).limit(1);
+        if ((taken as List).isNotEmpty) {
+          setState(() => _errorMessage = 'Esse nome de usuário já está em uso.');
+          return;
+        }
+        await client.auth.signUp(
           email: email,
           password: password,
-          data: {'display_name': _nameController.text.trim()},
+          data: {'display_name': _nameController.text.trim(), 'username': username},
         );
       } else {
-        await auth.signInWithPassword(email: email, password: password);
+        await client.auth.signInWithPassword(email: email, password: password);
       }
       // On success, AuthGate's stream rebuilds into the app automatically.
     } on AuthException catch (e) {
@@ -233,6 +244,20 @@ class _LoginScreenState extends State<LoginScreen> {
               style: const TextStyle(color: MimoColors.authText),
               decoration: _authInputDecoration(hint: 'Seu nome'),
               validator: (v) => (v == null || v.trim().isEmpty) ? 'Como podemos te chamar?' : null,
+            ),
+            const SizedBox(height: 16),
+            const _FieldLabel('Nome de usuário'),
+            TextFormField(
+              controller: _usernameController,
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp('[a-zA-Z0-9_]'))],
+              style: const TextStyle(color: MimoColors.authText),
+              decoration: _authInputDecoration(hint: 'seu_usuario').copyWith(
+                prefixText: '@',
+                prefixStyle: const TextStyle(color: MimoColors.authText),
+              ),
+              validator: (v) => (v == null || !_usernamePattern.hasMatch(v))
+                  ? '3 a 20 letras, números ou _'
+                  : null,
             ),
             const SizedBox(height: 16),
           ],
@@ -453,21 +478,9 @@ class _SocialButton extends StatelessWidget {
   Widget _icon() {
     switch (kind) {
       case _SocialKind.facebook:
-        return Container(
-          width: 22,
-          height: 22,
-          decoration: const BoxDecoration(color: Color(0xFF1877F2), shape: BoxShape.circle),
-          alignment: Alignment.center,
-          child: const Text(
-            'f',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15, height: 1),
-          ),
-        );
+        return Image.asset('assets/images/facebook_icon.png', width: 22, height: 22);
       case _SocialKind.google:
-        return const Text(
-          'G',
-          style: TextStyle(color: Color(0xFF4285F4), fontWeight: FontWeight.bold, fontSize: 18),
-        );
+        return Image.asset('assets/images/google_icon.png', width: 20, height: 20);
       case _SocialKind.apple:
         return const Icon(Icons.apple, color: Colors.white, size: 22);
     }

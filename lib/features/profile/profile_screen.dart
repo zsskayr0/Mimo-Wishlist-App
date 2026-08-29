@@ -24,7 +24,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     final user = Supabase.instance.client.auth.currentUser;
+    final username = user?.userMetadata?['username'] as String?;
 
     return SafeArea(
       child: ListView(
@@ -36,14 +38,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Container(
                   width: 76,
                   height: 76,
-                  decoration: const BoxDecoration(color: MimoColors.placeholder, shape: BoxShape.circle),
-                  child: const Icon(Icons.person_outline, size: 30, color: MimoColors.inkFaint),
+                  decoration: BoxDecoration(color: colors.placeholder, shape: BoxShape.circle),
+                  child: Icon(Icons.person_outline, size: 30, color: colors.inkFaint),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  user?.email ?? 'Perfil',
+                  username != null ? '@$username' : (user?.email ?? 'Perfil'),
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
+                if (username != null && user?.email != null) ...[
+                  const SizedBox(height: 2),
+                  Text(user!.email!, style: TextStyle(fontSize: 12.5, color: colors.inkFaint)),
+                ],
               ],
             ),
           ),
@@ -55,8 +61,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               return Container(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 decoration: BoxDecoration(
-                  color: MimoColors.surface,
-                  border: Border.all(color: MimoColors.border),
+                  color: colors.surface,
+                  border: Border.all(color: colors.border),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Column(
@@ -66,7 +72,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 2),
-                    const Text('mimos salvos', style: TextStyle(fontSize: 12, color: MimoColors.inkFaint)),
+                    Text('mimos salvos', style: TextStyle(fontSize: 12, color: colors.inkFaint)),
                   ],
                 ),
               );
@@ -76,7 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Text(
             'Pastas, amigos e histórico de compra chegam nas próximas etapas.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: MimoColors.inkFaint, fontSize: 12.5),
+            style: TextStyle(color: colors.inkFaint, fontSize: 12.5),
           ),
         ],
       ),

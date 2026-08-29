@@ -4,6 +4,22 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.6-alpha] - 2026-08-29
+
+### Added
+- Modo claro/escuro em todo o app (exceto a tela de Login/Cadastro, que
+  segue fixa na referência escura fornecida). Escuro usa preto AMOLED puro
+  no fundo (`MimoColors.dark.bg`). Preferência persistida e trocável em
+  Configurações → Aparência (Claro/Escuro/Sistema), via
+  `lib/core/theme/theme_controller.dart`.
+- Fonte trocada para Poppins em todo o app (`lib/core/theme/mimo_text.dart`),
+  registrando explicitamente os pesos usados (thin/light, regular, medium,
+  semibold, bold) para não cair em negrito sintético.
+- Ícones reais de Google e Facebook no Login/Cadastro (arquivos do usuário,
+  em `assets/images/`); Apple continua com o ícone vetorial.
+- Campo de nome de usuário no Cadastro, com validação de formato e
+  checagem de disponibilidade antes de criar a conta.
+
 ## [0.0.5-alpha] - 2026-08-29
 
 ### Fixed

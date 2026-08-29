@@ -80,6 +80,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     final searching = _searchController.text.trim().isNotEmpty;
 
     return SafeArea(
@@ -95,13 +96,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 height: 44,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
-                  color: MimoColors.surface,
-                  border: Border.all(color: MimoColors.border),
+                  color: colors.surface,
+                  border: Border.all(color: colors.border),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.search, size: 18, color: MimoColors.inkFaint),
+                    Icon(Icons.search, size: 18, color: colors.inkFaint),
                     const SizedBox(width: 10),
                     Expanded(
                       child: TextField(
@@ -127,7 +128,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     child: Center(child: CircularProgressIndicator()),
                   )
                 else if (_searchResults.isEmpty)
-                  Text('Ninguém encontrado.', style: TextStyle(color: MimoColors.inkSoft))
+                  Text('Ninguém encontrado.', style: TextStyle(color: colors.inkSoft))
                 else
                   for (final profile in _searchResults)
                     Padding(
@@ -163,7 +164,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                 children: [
                                   FilledButton(
                                     style: FilledButton.styleFrom(
-                                      backgroundColor: MimoColors.ink,
+                                      backgroundColor: colors.ink,
+                                      foregroundColor: colors.bg,
                                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                       minimumSize: Size.zero,
                                     ),
@@ -199,7 +201,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     if (friends.isEmpty) {
                       return Text(
                         'Nenhum amigo ainda. Busque por @usuário acima.',
-                        style: TextStyle(color: MimoColors.inkSoft),
+                        style: TextStyle(color: colors.inkSoft),
                       );
                     }
                     return Column(
@@ -231,7 +233,12 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label.toUpperCase(),
-      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.6, color: MimoColors.inkFaint),
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 0.6,
+        color: MimoColors.of(context).inkFaint,
+      ),
     );
   }
 }
@@ -245,11 +252,12 @@ class _ProfileRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: MimoColors.surface,
-        border: Border.all(color: MimoColors.border),
+        color: colors.surface,
+        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -257,8 +265,8 @@ class _ProfileRow extends StatelessWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: const BoxDecoration(color: MimoColors.placeholder, shape: BoxShape.circle),
-            child: const Icon(Icons.person_outline, size: 18, color: MimoColors.inkFaint),
+            decoration: BoxDecoration(color: colors.placeholder, shape: BoxShape.circle),
+            child: Icon(Icons.person_outline, size: 18, color: colors.inkFaint),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -268,7 +276,7 @@ class _ProfileRow extends StatelessWidget {
               children: [
                 Text('@${profile.username}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                 if (subtitle != null)
-                  Text(subtitle!, style: TextStyle(fontSize: 12, color: MimoColors.inkFaint)),
+                  Text(subtitle!, style: TextStyle(fontSize: 12, color: colors.inkFaint)),
               ],
             ),
           ),

@@ -3,6 +3,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/theme/mimo_colors.dart';
+import 'core/theme/mimo_text.dart';
+import 'core/theme/theme_controller.dart';
 import 'features/auth/auth_gate.dart';
 
 Future<void> main() async {
@@ -25,6 +27,8 @@ Future<void> main() async {
     );
   }
 
+  await ThemeController.initialize();
+
   runApp(MimoApp(supabaseConfigured: configured));
 }
 
@@ -35,25 +39,33 @@ class MimoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Mimo',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: MimoColors.gradientA,
-          brightness: Brightness.light,
-        ),
-        scaffoldBackgroundColor: MimoColors.bg,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeController.instance.mode,
+      builder: (context, themeMode, _) {
+        return MaterialApp(
+          title: 'Mimo',
+          debugShowCheckedModeBanner: false,
+          themeMode: themeMode,
+          theme: _buildTheme(MimoColors.light, Brightness.light),
+          darkTheme: _buildTheme(MimoColors.dark, Brightness.dark),
+          home: supabaseConfigured ? const AuthGate() : const _MissingEnvScreen(),
+        );
+      },
+    );
+  }
+
+  ThemeData _buildTheme(MimoColors colors, Brightness brightness) {
+    final base = ThemeData(brightness: brightness, useMaterial3: true);
+    return base.copyWith(
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: MimoColors.gradientA,
+        brightness: brightness,
       ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: MimoColors.gradientA,
-          brightness: Brightness.dark,
-        ),
+      scaffoldBackgroundColor: colors.bg,
+      textTheme: poppinsTextTheme(base.textTheme).apply(
+        bodyColor: colors.ink,
+        displayColor: colors.ink,
       ),
-      home: supabaseConfigured ? const AuthGate() : const _MissingEnvScreen(),
     );
   }
 }

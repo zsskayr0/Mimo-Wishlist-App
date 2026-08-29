@@ -35,6 +35,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     return SafeArea(
       bottom: false,
       child: Column(
@@ -53,7 +54,7 @@ class _FeedScreenState extends State<FeedScreen> {
                   child: const Icon(Icons.favorite, color: Colors.white, size: 14),
                 ),
                 const SizedBox(width: 8),
-                const Text('Mimo', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                Text('Mimo', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: colors.ink)),
                 const Spacer(),
                 _IconButton(icon: Icons.search, onTap: () {}),
               ],
@@ -65,17 +66,17 @@ class _FeedScreenState extends State<FeedScreen> {
               height: 44,
               padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
-                color: MimoColors.surface,
-                border: Border.all(color: MimoColors.border),
+                color: colors.surface,
+                border: Border.all(color: colors.border),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.search, size: 18, color: MimoColors.inkFaint),
+                  Icon(Icons.search, size: 18, color: colors.inkFaint),
                   const SizedBox(width: 10),
                   Text(
                     'Buscar mimos ou @usuário',
-                    style: TextStyle(color: MimoColors.inkFaint, fontSize: 14),
+                    style: TextStyle(color: colors.inkFaint, fontSize: 14, fontWeight: FontWeight.w300),
                   ),
                 ],
               ),
@@ -90,7 +91,7 @@ class _FeedScreenState extends State<FeedScreen> {
               children: [
                 _FilterChip(label: 'Pastas', icon: Icons.folder_outlined, onTap: _openFolders),
                 const SizedBox(width: 10),
-                Container(width: 1, color: MimoColors.border),
+                Container(width: 1, color: colors.border),
                 const SizedBox(width: 10),
                 const _FilterChip(label: 'Todos', selected: true),
                 const SizedBox(width: 8),
@@ -164,6 +165,7 @@ class _IconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(11),
@@ -171,11 +173,11 @@ class _IconButton extends StatelessWidget {
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: MimoColors.surface,
-          border: Border.all(color: MimoColors.border),
+          color: colors.surface,
+          border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(11),
         ),
-        child: Icon(icon, size: 18, color: MimoColors.ink),
+        child: Icon(icon, size: 18, color: colors.ink),
       ),
     );
   }
@@ -191,19 +193,20 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: selected ? MimoColors.ink : MimoColors.surface,
-        border: Border.all(color: selected ? MimoColors.ink : MimoColors.border),
+        color: selected ? colors.ink : colors.surface,
+        border: Border.all(color: selected ? colors.ink : colors.border),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: selected ? Colors.white : MimoColors.ink),
+            Icon(icon, size: 14, color: selected ? colors.bg : colors.ink),
             const SizedBox(width: 6),
           ],
           Text(
@@ -211,7 +214,7 @@ class _FilterChip extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : MimoColors.ink,
+              color: selected ? colors.bg : colors.ink,
             ),
           ),
         ],
@@ -232,15 +235,16 @@ class _MessageState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 32, color: MimoColors.inkFaint),
+            Icon(icon, size: 32, color: colors.inkFaint),
             const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center, style: const TextStyle(color: MimoColors.inkSoft)),
+            Text(message, textAlign: TextAlign.center, style: TextStyle(color: colors.inkSoft)),
             const SizedBox(height: 12),
             TextButton(onPressed: onRetry, child: const Text('Tentar de novo')),
           ],

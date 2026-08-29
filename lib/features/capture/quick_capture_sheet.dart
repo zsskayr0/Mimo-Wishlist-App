@@ -88,12 +88,13 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
-        decoration: const BoxDecoration(
-          color: MimoColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         ),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
         child: Form(
@@ -108,7 +109,7 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: MimoColors.placeholder,
+                    color: colors.placeholder,
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),
@@ -135,7 +136,7 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
               const SizedBox(height: 14),
               Text(
                 'Pasta (opcional)',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: MimoColors.inkFaint),
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: colors.inkFaint),
               ),
               const SizedBox(height: 8),
               FutureBuilder<List<Folder>>(
@@ -173,7 +174,7 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
               Text(
                 'Sem pasta, o mimo aparece como "Desorganizado"',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11.5, color: MimoColors.inkFaint),
+                style: TextStyle(fontSize: 11.5, color: colors.inkFaint, fontWeight: FontWeight.w300),
               ),
               const SizedBox(height: 16),
               FilledButton(
@@ -207,6 +208,7 @@ class _FolderChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(999),
       onTap: onTap,
@@ -214,8 +216,8 @@ class _FolderChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 13),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? MimoColors.ink : MimoColors.bg,
-          border: Border.all(color: selected ? MimoColors.ink : MimoColors.border),
+          color: selected ? colors.ink : colors.bg,
+          border: Border.all(color: selected ? colors.ink : colors.border),
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
@@ -223,7 +225,7 @@ class _FolderChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 12.5,
             fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : MimoColors.ink,
+            color: selected ? colors.bg : colors.ink,
           ),
         ),
       ),

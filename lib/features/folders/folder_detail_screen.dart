@@ -29,10 +29,11 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
     return Scaffold(
-      backgroundColor: MimoColors.bg,
+      backgroundColor: colors.bg,
       appBar: AppBar(
-        backgroundColor: MimoColors.bg,
+        backgroundColor: colors.bg,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Row(
@@ -62,7 +63,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                 return Center(
                   child: Text(
                     'Nenhum mimo nesta pasta ainda.',
-                    style: TextStyle(color: MimoColors.inkSoft),
+                    style: TextStyle(color: colors.inkSoft),
                   ),
                 );
               }
