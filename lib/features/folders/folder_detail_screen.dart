@@ -8,6 +8,7 @@ import '../../data/models/mimo.dart';
 import '../../data/repositories/folder_repository.dart';
 import '../../data/repositories/mimo_repository.dart';
 import '../feed/widgets/mimo_card.dart';
+import '../mimo_detail/mimo_detail_screen.dart';
 import 'invite_member_sheet.dart';
 
 class FolderDetailScreen extends StatefulWidget {
@@ -39,6 +40,17 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   Future<void> _openInvite() async {
     final invited = await InviteMemberSheet.show(context, folderId: widget.folder.id);
     if (invited == true) _reloadMembers();
+  }
+
+  void _reloadMimos() {
+    setState(() => _mimosFuture = MimoRepository().fetchByFolder(widget.folder.id));
+  }
+
+  Future<void> _openDetail(Mimo mimo) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => MimoDetailScreen(mimo: mimo)),
+    );
+    _reloadMimos();
   }
 
   Color get _folderColor =>
@@ -127,7 +139,10 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                         childAspectRatio: 0.72,
                       ),
                       itemCount: mimos.length,
-                      itemBuilder: (context, index) => MimoCard(mimo: mimos[index]),
+                      itemBuilder: (context, index) => MimoCard(
+                        mimo: mimos[index],
+                        onTap: () => _openDetail(mimos[index]),
+                      ),
                     );
                   },
                 ),

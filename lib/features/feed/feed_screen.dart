@@ -4,6 +4,7 @@ import '../../core/theme/mimo_colors.dart';
 import '../../data/models/mimo.dart';
 import '../../data/repositories/mimo_repository.dart';
 import '../folders/folders_screen.dart';
+import '../mimo_detail/mimo_detail_screen.dart';
 import 'widgets/mimo_card.dart';
 
 class FeedScreen extends StatefulWidget {
@@ -31,6 +32,13 @@ class _FeedScreenState extends State<FeedScreen> {
 
   void _openFolders() {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FoldersScreen()));
+  }
+
+  Future<void> _openDetail(Mimo mimo) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => MimoDetailScreen(mimo: mimo)),
+    );
+    _reload();
   }
 
   @override
@@ -143,7 +151,10 @@ class _FeedScreenState extends State<FeedScreen> {
                           childAspectRatio: 0.72,
                         ),
                         itemCount: mimos.length,
-                        itemBuilder: (context, index) => MimoCard(mimo: mimos[index]),
+                        itemBuilder: (context, index) => MimoCard(
+                          mimo: mimos[index],
+                          onTap: () => _openDetail(mimos[index]),
+                        ),
                       ),
                     ),
                   ),

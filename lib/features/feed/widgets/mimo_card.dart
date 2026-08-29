@@ -5,10 +5,18 @@ import '../../../data/models/mimo.dart';
 
 /// One grid card. The Desorganizado/Pasta pill is mutually exclusive by
 /// construction — it reads straight off [Mimo.isUnorganized], never both.
+///
+/// The cover is `Expanded` rather than a fixed `AspectRatio`: the text
+/// block below it (title, up to 2 lines, plus price and the status pill)
+/// has an intrinsic height that doesn't scale with card width, while an
+/// aspect-ratio'd image does — at some grid widths that mismatch made the
+/// two together taller than the cell, overflowing it. Expanded just takes
+/// whatever height is left after the text block, so it can't happen.
 class MimoCard extends StatelessWidget {
-  const MimoCard({super.key, required this.mimo});
+  const MimoCard({super.key, required this.mimo, this.onTap});
 
   final Mimo mimo;
+  final VoidCallback? onTap;
 
   String _formatPrice(double price) {
     final fixed = price.toStringAsFixed(2).replaceAll('.', ',');
@@ -32,55 +40,62 @@ class MimoCard extends StatelessWidget {
     final colors = MimoColors.of(context);
     final folderColor = _folderColor(colors);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surface,
+    return Material(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AspectRatio(
-            aspectRatio: 1.15,
-            child: Container(
-              color: colors.placeholder,
-              alignment: Alignment.center,
-              child: mimo.coverImageUrl == null
-                  ? Icon(Icons.image_outlined, color: colors.inkFaint.withValues(alpha: 0.8), size: 30)
-                  : Image.network(mimo.coverImageUrl!, fit: BoxFit.cover),
-            ),
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: colors.border),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  mimo.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, height: 1.25),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  color: colors.placeholder,
+                  alignment: Alignment.center,
+                  child: mimo.coverImageUrl == null
+                      ? Icon(Icons.image_outlined, color: colors.inkFaint.withValues(alpha: 0.8), size: 30)
+                      : Image.network(mimo.coverImageUrl!, fit: BoxFit.cover),
                 ),
-                if (mimo.price != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    _formatPrice(mimo.price!),
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.inkSoft),
-                  ),
-                ],
-                const SizedBox(height: 6),
-                _StatusPill(
-                  label: mimo.isUnorganized ? 'Desorganizado' : 'Pasta: ${mimo.folderName ?? '—'}',
-                  color: mimo.isUnorganized ? colors.tagGray : folderColor,
-                  background: mimo.isUnorganized ? colors.tagGrayBg : folderColor.withValues(alpha: 0.16),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      mimo.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, height: 1.25),
+                    ),
+                    if (mimo.price != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatPrice(mimo.price!),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.inkSoft),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    _StatusPill(
+                      label: mimo.isUnorganized ? 'Desorganizado' : 'Pasta: ${mimo.folderName ?? '—'}',
+                      color: mimo.isUnorganized ? colors.tagGray : folderColor,
+                      background: mimo.isUnorganized ? colors.tagGrayBg : folderColor.withValues(alpha: 0.16),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

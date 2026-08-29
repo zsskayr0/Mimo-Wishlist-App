@@ -4,6 +4,30 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.10-alpha] - 2026-08-29
+
+### Fixed
+- `MimoCard` estourava a altura da célula do grid em certas larguras
+  ("BOTTOM OVERFLOWED BY N PIXELS"): a imagem crescia com a largura do
+  card via `AspectRatio`, mas o bloco de texto abaixo tinha altura fixa —
+  em cards estreitos a soma passava da altura calculada pelo
+  `childAspectRatio`. Trocado para `Expanded` na imagem, que absorve o
+  espaço que sobra depois do texto em vez de brigar por ele.
+
+### Added
+- Tela de Detalhe do Mimo (`lib/features/mimo_detail/`) — tocar num card
+  do Feed ou de uma pasta agora abre a tela real: capa, preço/loja com
+  link pra abrir de verdade, pasta/tags, Prioridade e Status de compra
+  editáveis ali mesmo, Notas, Duplicar em outra pasta e Excluir.
+- Tags reais: `TagRepository` + seletor de múltipla escolha na Captura
+  Rápida, usando as tags de sistema já semeadas.
+- `FolderPickerSheet` compartilhado entre a Captura Rápida e o duplicar
+  do Detalhe do Mimo.
+- Captura Rápida reconstruída para seguir o wireframe: campos de
+  título/preço no estilo rótulo-acima-do-valor ao lado da capa, link com
+  domínio detectado ao vivo, seletor de prioridade, pasta como botão
+  (abre o picker) em vez de chips sempre visíveis, e o seletor de tags.
+
 ## [0.0.9-alpha] - 2026-08-29
 
 ### Added
