@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/mimo_colors.dart';
+import '../../data/models/folder.dart';
+import '../../data/repositories/folder_repository.dart';
 import '../../data/repositories/mimo_repository.dart';
 
 /// Manual entry only for now — paste a link, type a title and price. The
@@ -29,9 +31,17 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
   final _priceController = TextEditingController();
   final _linkController = TextEditingController();
   final _repository = MimoRepository();
+  late Future<List<Folder>> _foldersFuture;
+  String? _selectedFolderId;
 
   bool _isSaving = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _foldersFuture = FolderRepository().fetchFolders();
+  }
 
   @override
   void dispose() {
@@ -66,6 +76,7 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
         originalUrl: _linkController.text.trim().isEmpty ? null : _linkController.text.trim(),
         storeDomain: _domainFrom(_linkController.text),
         price: priceText.isEmpty ? null : double.tryParse(priceText),
+        folderId: _selectedFolderId,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -121,6 +132,39 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(labelText: 'Preço (opcional)', prefixText: 'R\$ '),
               ),
+              const SizedBox(height: 14),
+              Text(
+                'Pasta (opcional)',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: MimoColors.inkFaint),
+              ),
+              const SizedBox(height: 8),
+              FutureBuilder<List<Folder>>(
+                future: _foldersFuture,
+                builder: (context, snapshot) {
+                  final folders = snapshot.data ?? const [];
+                  return SizedBox(
+                    height: 34,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        _FolderChip(
+                          label: 'Nenhuma',
+                          selected: _selectedFolderId == null,
+                          onTap: () => setState(() => _selectedFolderId = null),
+                        ),
+                        for (final folder in folders) ...[
+                          const SizedBox(width: 8),
+                          _FolderChip(
+                            label: folder.name,
+                            selected: _selectedFolderId == folder.id,
+                            onTap: () => setState(() => _selectedFolderId = folder.id),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              ),
               if (_errorMessage != null) ...[
                 const SizedBox(height: 12),
                 Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
@@ -147,6 +191,39 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
                     : const Text('Salvar no Feed'),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FolderChip extends StatelessWidget {
+  const _FolderChip({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 13),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? MimoColors.ink : MimoColors.bg,
+          border: Border.all(color: selected ? MimoColors.ink : MimoColors.border),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : MimoColors.ink,
           ),
         ),
       ),

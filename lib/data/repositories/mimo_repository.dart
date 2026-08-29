@@ -25,6 +25,29 @@ class MimoRepository {
         .toList();
   }
 
+  /// All mimos filed under one folder — from every member with access to
+  /// it, not just the caller, since a shared folder is meant as a joint
+  /// view. RLS (`mimos_select`) is what actually enforces who gets to see
+  /// what here.
+  Future<List<Mimo>> fetchByFolder(String folderId) async {
+    final rows = await _client
+        .from('mimos')
+        .select('*, folders(name, color)')
+        .eq('folder_id', folderId)
+        .order('created_at', ascending: false);
+
+    return (rows as List)
+        .map((row) => Mimo.fromJson(row as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Files an existing mimo into (or out of, when [folderId] is null) a
+  /// folder. Never a second row: this UPDATEs `mimos.folder_id` in place,
+  /// which is the whole "one folder per mimo" rule.
+  Future<void> assignFolder(String mimoId, String? folderId) async {
+    await _client.from('mimos').update({'folder_id': folderId}).eq('id', mimoId);
+  }
+
   /// Manual quick-capture: paste-a-link path from the wireframes. Cover
   /// image / AI category+crop suggestions are a later increment — this
   /// inserts with `source: manual` and no folder, so it lands in the Feed
@@ -35,6 +58,7 @@ class MimoRepository {
     String? storeDomain,
     double? price,
     String priority = 'media',
+    String? folderId,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) {
@@ -48,6 +72,7 @@ class MimoRepository {
       'store_domain': storeDomain,
       'price': price,
       'priority': priority,
+      'folder_id': folderId,
       'source': 'manual',
     });
   }

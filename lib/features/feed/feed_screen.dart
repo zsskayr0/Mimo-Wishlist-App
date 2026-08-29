@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/mimo_colors.dart';
 import '../../data/models/mimo.dart';
 import '../../data/repositories/mimo_repository.dart';
+import '../folders/folders_screen.dart';
 import 'widgets/mimo_card.dart';
 
 class FeedScreen extends StatefulWidget {
@@ -26,6 +27,10 @@ class _FeedScreenState extends State<FeedScreen> {
     final future = _repository.fetchFeed();
     setState(() => _feedFuture = future);
     await future;
+  }
+
+  void _openFolders() {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FoldersScreen()));
   }
 
   @override
@@ -82,14 +87,18 @@ class _FeedScreenState extends State<FeedScreen> {
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              children: const [
-                _FilterChip(label: 'Todos', selected: true),
-                SizedBox(width: 8),
-                _FilterChip(label: 'Casa'),
-                SizedBox(width: 8),
-                _FilterChip(label: 'Tech'),
-                SizedBox(width: 8),
-                _FilterChip(label: 'Roupas'),
+              children: [
+                _FilterChip(label: 'Pastas', icon: Icons.folder_outlined, onTap: _openFolders),
+                const SizedBox(width: 10),
+                Container(width: 1, color: MimoColors.border),
+                const SizedBox(width: 10),
+                const _FilterChip(label: 'Todos', selected: true),
+                const SizedBox(width: 8),
+                const _FilterChip(label: 'Casa'),
+                const SizedBox(width: 8),
+                const _FilterChip(label: 'Tech'),
+                const SizedBox(width: 8),
+                const _FilterChip(label: 'Roupas'),
               ],
             ),
           ),
@@ -118,16 +127,24 @@ class _FeedScreenState extends State<FeedScreen> {
                 }
                 return RefreshIndicator(
                   onRefresh: _reload,
-                  child: GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 14,
-                      crossAxisSpacing: 14,
-                      childAspectRatio: 0.72,
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1100),
+                      child: GridView.builder(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                        // Max-extent (not a fixed count) so the grid gains
+                        // columns on wide desktop windows instead of
+                        // stretching two phone-width cards edge to edge.
+                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 190,
+                          mainAxisSpacing: 14,
+                          crossAxisSpacing: 14,
+                          childAspectRatio: 0.72,
+                        ),
+                        itemCount: mimos.length,
+                        itemBuilder: (context, index) => MimoCard(mimo: mimos[index]),
+                      ),
                     ),
-                    itemCount: mimos.length,
-                    itemBuilder: (context, index) => MimoCard(mimo: mimos[index]),
                   ),
                 );
               },
@@ -165,14 +182,16 @@ class _IconButton extends StatelessWidget {
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, this.selected = false});
+  const _FilterChip({required this.label, this.selected = false, this.icon, this.onTap});
 
   final String label;
   final bool selected;
+  final IconData? icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       alignment: Alignment.center,
       decoration: BoxDecoration(
@@ -180,15 +199,27 @@ class _FilterChip extends StatelessWidget {
         border: Border.all(color: selected ? MimoColors.ink : MimoColors.border),
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: selected ? Colors.white : MimoColors.ink,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: selected ? Colors.white : MimoColors.ink),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: selected ? Colors.white : MimoColors.ink,
+            ),
+          ),
+        ],
       ),
     );
+
+    if (onTap == null) return chip;
+    return InkWell(borderRadius: BorderRadius.circular(999), onTap: onTap, child: chip);
   }
 }
 

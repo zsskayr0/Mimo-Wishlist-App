@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
 import '../capture/quick_capture_sheet.dart';
 import '../feed/feed_screen.dart';
@@ -7,11 +8,18 @@ import '../friends/friends_screen.dart';
 import '../profile/profile_screen.dart';
 import '../settings/settings_screen.dart';
 
-/// The 4-tab bottom nav (Feed, Amigos, Perfil, Configurações) with the
-/// universal capture button raised in the center, between Amigos and
-/// Perfil — mirrors the wireframes exactly. Bumping [_feedRefreshTick]
-/// re-keys FeedScreen so it refetches after a successful capture, without
-/// reaching for a state-management package for one signal.
+const _destinations = [
+  (icon: Icons.grid_view_rounded, label: 'Feed'),
+  (icon: Icons.people_outline, label: 'Amigos'),
+  (icon: Icons.person_outline, label: 'Perfil'),
+  (icon: Icons.tune, label: 'Config'),
+];
+
+/// The app's chrome: Feed/Amigos/Perfil/Config plus the universal capture
+/// button, in two shapes picked by width (see [MimoBreakpoints]) —
+/// a bottom bar with a raised center button on phones, a left sidebar with
+/// a labelled button on desktop. Both wrap the same screens, so behaviour
+/// never depends on which chrome is showing.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -41,14 +49,122 @@ class _HomeShellState extends State<HomeShell> {
       const ProfileScreen(),
       const SettingsScreen(),
     ];
+    final content = IndexedStack(index: _tabIndex, children: tabs);
 
-    return Scaffold(
-      backgroundColor: MimoColors.bg,
-      body: IndexedStack(index: _tabIndex, children: tabs),
-      bottomNavigationBar: _BottomBar(
-        currentIndex: _tabIndex,
-        onTabSelected: (index) => setState(() => _tabIndex = index),
-        onAddPressed: _openCapture,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final desktop = MimoBreakpoints.isDesktop(constraints.maxWidth);
+        return Scaffold(
+          backgroundColor: MimoColors.bg,
+          body: desktop
+              ? Row(
+                  children: [
+                    _Sidebar(
+                      currentIndex: _tabIndex,
+                      onTabSelected: (index) => setState(() => _tabIndex = index),
+                      onAddPressed: _openCapture,
+                    ),
+                    const VerticalDivider(width: 1, color: MimoColors.border),
+                    Expanded(child: content),
+                  ],
+                )
+              : content,
+          bottomNavigationBar: desktop
+              ? null
+              : _BottomBar(
+                  currentIndex: _tabIndex,
+                  onTabSelected: (index) => setState(() => _tabIndex = index),
+                  onAddPressed: _openCapture,
+                ),
+        );
+      },
+    );
+  }
+}
+
+class _Sidebar extends StatelessWidget {
+  const _Sidebar({
+    required this.currentIndex,
+    required this.onTabSelected,
+    required this.onAddPressed,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onTabSelected;
+  final VoidCallback onAddPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 232,
+      color: MimoColors.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  gradient: MimoColors.gradient,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(Icons.favorite, color: Colors.white, size: 15),
+              ),
+              const SizedBox(width: 10),
+              const Text('Mimo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 28),
+          FilledButton.icon(
+            onPressed: onAddPressed,
+            style: FilledButton.styleFrom(
+              backgroundColor: MimoColors.gradientA,
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+            ),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Novo mimo'),
+          ),
+          const SizedBox(height: 20),
+          for (var i = 0; i < _destinations.length; i++) _railItem(i),
+        ],
+      ),
+    );
+  }
+
+  Widget _railItem(int index) {
+    final item = _destinations[index];
+    final active = index == currentIndex;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Material(
+        color: active ? MimoColors.gradientA.withValues(alpha: 0.1) : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => onTabSelected(index),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Row(
+              children: [
+                Icon(item.icon, size: 20, color: active ? MimoColors.gradientA : MimoColors.inkSoft),
+                const SizedBox(width: 12),
+                Text(
+                  item.label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: active ? MimoColors.gradientA : MimoColors.inkSoft,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -64,13 +180,6 @@ class _BottomBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTabSelected;
   final VoidCallback onAddPressed;
-
-  static const _items = [
-    (icon: Icons.grid_view_rounded, label: 'Feed'),
-    (icon: Icons.people_outline, label: 'Amigos'),
-    (icon: Icons.person_outline, label: 'Perfil'),
-    (icon: Icons.tune, label: 'Config'),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +236,7 @@ class _BottomBar extends StatelessWidget {
   }
 
   Widget _navItem(int index) {
-    final item = _items[index];
+    final item = _destinations[index];
     final active = index == currentIndex;
     final color = active ? MimoColors.gradientA : MimoColors.inkFaint;
 

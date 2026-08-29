@@ -2,8 +2,20 @@
 
 Todas as mudanças notáveis deste projeto são documentadas aqui.
 
-O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
-e o versionamento segue [Semantic Versioning 2.0.0](https://semver.org/).
+Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
+
+## [0.0.3-alpha] - 2026-08-29
+
+### Added
+- Pastas (`lib/features/folders/`): listar, criar (nome + cor) e abrir uma
+  pasta pra ver os mimos dentro dela. Alocar/duplicar entre pastas segue a
+  regra de 1 pasta por mimo — sem tabela de junção, é uma coluna só.
+- Seletor de pasta na Captura Rápida, ligado às pastas reais do usuário.
+- Amigos (`lib/features/friends/`): busca por @usuário, solicitações
+  (aceitar/recusar) e lista de amigos, tudo contra `friendships` real.
+- Shell adaptável (`lib/features/shell/home_shell.dart`): barra inferior
+  com botão central em telas estreitas, rail lateral com botão "Novo mimo"
+  em telas largas (>=840px) — mesmo breakpoint usado no grid do Feed.
 
 ## [0.0.2-alpha] - 2026-08-29
 

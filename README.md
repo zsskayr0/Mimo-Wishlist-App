@@ -42,12 +42,6 @@ Projeto open source, mantido por uma pessoa só, com foco em **Android** e
 Novas migrations seguem a mesma numeração sequencial, sempre subindo
 (`004_...`, `005_...`, ...).
 
-## Versionamento
-
-Este projeto segue [Semantic Versioning 2.0.0](https://semver.org/). Versão
-atual: **0.0.1-alpha** — fase inicial, schema e API ainda podem mudar sem
-aviso prévio. Mudanças ficam registradas em [CHANGELOG.md](CHANGELOG.md).
-
 ## Licença
 
 [MIT](LICENSE)
