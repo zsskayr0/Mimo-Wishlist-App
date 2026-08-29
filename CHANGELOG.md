@@ -4,6 +4,15 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.8-alpha] - 2026-08-29
+
+### Fixed
+- `supabase/migrations/004_fix_folder_rls_recursion.sql`: `folders` e
+  `folder_members` se consultavam mutuamente dentro das próprias políticas
+  de RLS, causando "infinite recursion detected in policy" (42P17) assim
+  que uma pasta compartilhada entrava em jogo. Resolvido com funções
+  `SECURITY DEFINER` que rompem o ciclo.
+
 ## [0.0.7-alpha] - 2026-08-29
 
 ### Fixed
