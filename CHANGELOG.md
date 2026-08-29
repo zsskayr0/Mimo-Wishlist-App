@@ -4,6 +4,16 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.9-alpha] - 2026-08-29
+
+### Added
+- Compartilhamento de pasta: convidar por `@usuário` com papel de editor ou
+  visualizador (`lib/features/folders/invite_member_sheet.dart`), lista de
+  membros na tela da pasta, botão de convidar visível só pro dono.
+- `supabase/migrations/005_folder_members_visibility.sql`: qualquer membro
+  de uma pasta compartilhada agora vê a lista completa de quem mais está
+  nela (antes, só via a própria linha).
+
 ## [0.0.8-alpha] - 2026-08-29
 
 ### Fixed
