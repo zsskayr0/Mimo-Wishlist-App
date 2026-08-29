@@ -4,6 +4,14 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.7-alpha] - 2026-08-29
+
+### Fixed
+- Cadastro não dava nenhum feedback quando o projeto Supabase exige
+  confirmação de e-mail (padrão de fábrica): `signUp()` tem sucesso mas
+  não retorna sessão, então o `AuthGate` nunca reagia. Agora mostra um
+  aviso pedindo pra confirmar o e-mail nesse caso.
+
 ## [0.0.6-alpha] - 2026-08-29
 
 ### Added
