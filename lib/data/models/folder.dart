@@ -9,6 +9,7 @@ class Folder {
     required this.isShared,
     this.mimoCount = 0,
     this.ownerUsername,
+    this.memberAvatarUrls = const [],
   });
 
   final String id;
@@ -23,10 +24,19 @@ class Folder {
   /// @quemcompartilhou" on the Amigos screen.
   final String? ownerUsername;
 
+  /// One entry per member (owner not included), null where that member
+  /// has no avatar set — only populated when the query embeds
+  /// `folder_members(users(avatar_url))`, for the Pastas list's
+  /// overlapping-avatars stack on shared folders.
+  final List<String?> memberAvatarUrls;
+
   factory Folder.fromJson(Map<String, dynamic> json) {
     final mimos = json['mimos'] as List?;
-    final count = mimos != null && mimos.isNotEmpty ? (mimos.first['count'] as num?)?.toInt() : null;
+    final count = mimos != null && mimos.isNotEmpty
+        ? (mimos.first['count'] as num?)?.toInt()
+        : null;
     final owner = json['users'] as Map<String, dynamic>?;
+    final members = json['folder_members'] as List?;
     return Folder(
       id: json['id'] as String,
       ownerId: json['owner_id'] as String,
@@ -35,6 +45,16 @@ class Folder {
       isShared: json['is_shared'] as bool? ?? false,
       mimoCount: count ?? 0,
       ownerUsername: owner?['username'] as String?,
+      memberAvatarUrls: members == null
+          ? const []
+          : members
+                .map(
+                  (m) =>
+                      ((m as Map<String, dynamic>)['users']
+                              as Map<String, dynamic>?)?['avatar_url']
+                          as String?,
+                )
+                .toList(),
     );
   }
 }

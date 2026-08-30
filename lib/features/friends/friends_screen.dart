@@ -25,6 +25,15 @@ class _FriendsScreenState extends State<FriendsScreen> {
   List<UserProfile> _searchResults = const [];
   bool _isSearching = false;
 
+  /// Search results a request was just sent for — relabels/disables that
+  /// row's button instead of leaving it tappable again (and looking like
+  /// nothing happened).
+  final Set<String> _pendingRequestIds = {};
+
+  /// Friendship ids currently being accepted/declined — disables that
+  /// row's buttons so a slow response can't be double-tapped.
+  final Set<String> _respondingIds = {};
+
   /// Null only before the first load ever completes — see FeedScreen for
   /// why these are cached state instead of bare Future+FutureBuilder
   /// (a reload used to flash all three lists back to a loading spinner).
@@ -87,26 +96,63 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
   Future<void> _sendRequest(UserProfile profile) async {
     final messenger = ScaffoldMessenger.of(context);
+    setState(() => _pendingRequestIds.add(profile.id));
     try {
       await _repository.sendRequest(profile.id);
-      messenger.showSnackBar(SnackBar(content: Text('Solicitação enviada pra @${profile.username}')));
+      messenger.showSnackBar(
+        SnackBar(content: Text('Solicitação enviada pra @${profile.username}')),
+      );
     } on FriendshipAlreadyExistsException {
-      messenger.showSnackBar(const SnackBar(content: Text('Vocês já têm uma solicitação ou amizade')));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Vocês já têm uma solicitação ou amizade'),
+        ),
+      );
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text('Não deu pra enviar. Tenta de novo.')));
+      if (mounted) setState(() => _pendingRequestIds.remove(profile.id));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Não deu pra enviar. Tenta de novo.')),
+      );
     }
   }
 
-  Future<void> _respond(FriendshipRequest request, {required bool accept}) async {
-    await _repository.respondToRequest(request.friendshipId, accept: accept);
-    _reloadLists();
+  /// Updates `_requests`/`_friends` locally the moment the server call
+  /// succeeds — no waiting on a full 3-list reload before the request
+  /// visibly moves, which was the "solicitação" flow's worst offender.
+  /// Still reconciles with the server afterward, just without blocking
+  /// the UI on it.
+  Future<void> _respond(
+    FriendshipRequest request, {
+    required bool accept,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _respondingIds.add(request.friendshipId));
+    try {
+      await _repository.respondToRequest(request.friendshipId, accept: accept);
+      if (!mounted) return;
+      setState(() {
+        _requests = _requests
+            ?.where((r) => r.friendshipId != request.friendshipId)
+            .toList();
+        if (accept) _friends = [...?_friends, request.profile];
+        _respondingIds.remove(request.friendshipId);
+      });
+      _reloadLists();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _respondingIds.remove(request.friendshipId));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Não deu pra responder. Tenta de novo.')),
+      );
+    }
   }
 
   Future<void> _openFriendActions(UserProfile friend) async {
     final action = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => _FriendActionsSheet(colors: MimoColors.of(context), friend: friend),
+      builder: (context) =>
+          _FriendActionsSheet(colors: MimoColors.of(context), friend: friend),
     );
     if (action != 'remove' || !mounted) return;
     await _repository.removeFriend(friend.id);
@@ -114,7 +160,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   void _openSharedFolder(Folder folder) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => FolderDetailScreen(folder: folder)));
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => FolderDetailScreen(folder: folder)),
+    );
   }
 
   @override
@@ -126,142 +174,191 @@ class _FriendsScreenState extends State<FriendsScreen> {
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
-            children: [
-              Row(
-                children: [
-                  const Text('Amigos', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
-                  const Spacer(),
-                  _IconButton(icon: Icons.search, onTap: () => _searchFocusNode.requestFocus()),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  border: Border.all(color: colors.border),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
+          child: RefreshIndicator(
+            onRefresh: _reloadLists,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
+              children: [
+                Row(
                   children: [
-                    Icon(Icons.search, size: 18, color: colors.inkFaint),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        focusNode: _searchFocusNode,
-                        onChanged: _onSearchChanged,
-                        decoration: const InputDecoration(
-                          hintText: 'Buscar @usuário',
-                          border: InputBorder.none,
-                          isDense: true,
-                        ),
+                    const Text(
+                      'Amigos',
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.bold,
                       ),
+                    ),
+                    const Spacer(),
+                    _IconButton(
+                      icon: Icons.search,
+                      onTap: () => _searchFocusNode.requestFocus(),
                     ),
                   ],
                 ),
-              ),
-              if (searching) ...[
-                const SizedBox(height: 20),
-                _SectionLabel('Resultados'),
-                const SizedBox(height: 10),
-                if (_isSearching && _searchResults.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_searchResults.isEmpty)
-                  Text('Ninguém encontrado.', style: TextStyle(color: colors.inkSoft))
-                else
-                  for (final profile in _searchResults)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _ProfileRow(
-                        profile: profile,
-                        trailing: TextButton(
-                          onPressed: () => _sendRequest(profile),
-                          child: const Text('Adicionar'),
+                const SizedBox(height: 16),
+                Container(
+                  height: 44,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    border: Border.all(color: colors.border),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.search, size: 18, color: colors.inkFaint),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          focusNode: _searchFocusNode,
+                          onChanged: _onSearchChanged,
+                          decoration: const InputDecoration(
+                            hintText: 'Buscar @usuário',
+                            border: InputBorder.none,
+                            isDense: true,
+                          ),
                         ),
                       ),
-                    ),
-              ] else if (_friends == null) ...[
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 40),
-                  child: Center(child: CircularProgressIndicator()),
+                    ],
+                  ),
                 ),
-              ] else ...[
-                const SizedBox(height: 22),
-                if (_requests!.isNotEmpty) ...[
-                  _SectionLabel('Solicitações'),
+                if (searching) ...[
+                  const SizedBox(height: 20),
+                  _SectionLabel('Resultados'),
                   const SizedBox(height: 10),
-                  for (final request in _requests!)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _ProfileRow(
-                        profile: request.profile,
-                        subtitle: 'quer ser sua amiga',
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            FilledButton(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: colors.ink,
-                                foregroundColor: colors.bg,
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                minimumSize: Size.zero,
-                              ),
-                              onPressed: () => _respond(request, accept: true),
-                              child: const Text('Aceitar', style: TextStyle(fontSize: 12.5)),
+                  if (_isSearching && _searchResults.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_searchResults.isEmpty)
+                    Text(
+                      'Ninguém encontrado.',
+                      style: TextStyle(color: colors.inkSoft),
+                    )
+                  else
+                    for (final profile in _searchResults)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _ProfileRow(
+                          profile: profile,
+                          trailing: TextButton(
+                            onPressed: _pendingRequestIds.contains(profile.id)
+                                ? null
+                                : () => _sendRequest(profile),
+                            child: Text(
+                              _pendingRequestIds.contains(profile.id)
+                                  ? 'Pendente'
+                                  : 'Adicionar',
                             ),
-                            const SizedBox(width: 6),
-                            OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: colors.ink,
-                                side: BorderSide(color: colors.border),
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                minimumSize: Size.zero,
-                              ),
-                              onPressed: () => _respond(request, accept: false),
-                              child: const Text('Recusar', style: TextStyle(fontSize: 12.5)),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  const SizedBox(height: 12),
-                ],
-                if (_sharedFolders!.isNotEmpty) ...[
-                  _SectionLabel('Pastas compartilhadas com você'),
-                  const SizedBox(height: 10),
-                  for (final folder in _sharedFolders!)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _SharedFolderRow(folder: folder, onTap: () => _openSharedFolder(folder)),
-                    ),
-                  const SizedBox(height: 12),
-                ],
-                _SectionLabel('Seus amigos${_friends!.isEmpty ? '' : ' · ${_friends!.length}'}'),
-                const SizedBox(height: 10),
-                if (_friends!.isEmpty)
-                  Text(
-                    'Nenhum amigo ainda. Busque por @usuário acima.',
-                    style: TextStyle(color: colors.inkSoft),
-                  )
-                else
-                  for (final friend in _friends!)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _ProfileRow(
-                        profile: friend,
-                        showChevron: true,
-                        onTap: () => _openFriendActions(friend),
+                ] else if (_friends == null) ...[
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 40),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 22),
+                  if (_requests!.isNotEmpty) ...[
+                    _SectionLabel('Solicitações'),
+                    const SizedBox(height: 10),
+                    for (final request in _requests!)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _ProfileRow(
+                          profile: request.profile,
+                          subtitle: 'quer ser sua amiga',
+                          trailing:
+                              _respondingIds.contains(request.friendshipId)
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    FilledButton(
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: colors.ink,
+                                        foregroundColor: colors.bg,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 8,
+                                        ),
+                                        minimumSize: Size.zero,
+                                      ),
+                                      onPressed: () =>
+                                          _respond(request, accept: true),
+                                      child: const Text(
+                                        'Aceitar',
+                                        style: TextStyle(fontSize: 12.5),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    OutlinedButton(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: colors.ink,
+                                        side: BorderSide(color: colors.border),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 8,
+                                        ),
+                                        minimumSize: Size.zero,
+                                      ),
+                                      onPressed: () =>
+                                          _respond(request, accept: false),
+                                      child: const Text(
+                                        'Recusar',
+                                        style: TextStyle(fontSize: 12.5),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
                       ),
-                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (_sharedFolders!.isNotEmpty) ...[
+                    _SectionLabel('Pastas compartilhadas com você'),
+                    const SizedBox(height: 10),
+                    for (final folder in _sharedFolders!)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _SharedFolderRow(
+                          folder: folder,
+                          onTap: () => _openSharedFolder(folder),
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                  ],
+                  _SectionLabel(
+                    'Seus amigos${_friends!.isEmpty ? '' : ' · ${_friends!.length}'}',
+                  ),
+                  const SizedBox(height: 10),
+                  if (_friends!.isEmpty)
+                    Text(
+                      'Nenhum amigo ainda. Busque por @usuário acima.',
+                      style: TextStyle(color: colors.inkSoft),
+                    )
+                  else
+                    for (final friend in _friends!)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _ProfileRow(
+                          profile: friend,
+                          showChevron: true,
+                          onTap: () => _openFriendActions(friend),
+                        ),
+                      ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -344,7 +441,10 @@ class _ProfileRow extends StatelessWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(color: colors.placeholder, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: colors.placeholder,
+              shape: BoxShape.circle,
+            ),
             child: Icon(Icons.person_outline, size: 18, color: colors.inkFaint),
           ),
           const SizedBox(width: 12),
@@ -355,7 +455,10 @@ class _ProfileRow extends StatelessWidget {
               children: [
                 Text(
                   profile.displayName ?? '@${profile.username}',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
                   subtitle ?? '@${profile.username}',
@@ -365,7 +468,8 @@ class _ProfileRow extends StatelessWidget {
             ),
           ),
           ?trailing,
-          if (showChevron) Icon(Icons.chevron_right, color: colors.inkFaint, size: 20),
+          if (showChevron)
+            Icon(Icons.chevron_right, color: colors.inkFaint, size: 20),
         ],
       ),
     );
@@ -374,7 +478,11 @@ class _ProfileRow extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(14),
-      child: InkWell(borderRadius: BorderRadius.circular(14), onTap: onTap, child: row),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: row,
+      ),
     );
   }
 }
@@ -385,7 +493,8 @@ class _SharedFolderRow extends StatelessWidget {
   final Folder folder;
   final VoidCallback onTap;
 
-  Color get _color => Color(int.parse('FF${folder.color.replaceFirst('#', '')}', radix: 16));
+  Color get _color =>
+      Color(int.parse('FF${folder.color.replaceFirst('#', '')}', radix: 16));
 
   @override
   Widget build(BuildContext context) {
@@ -407,7 +516,10 @@ class _SharedFolderRow extends StatelessWidget {
               Container(
                 width: 40,
                 height: 40,
-                decoration: BoxDecoration(color: _color.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(11)),
+                decoration: BoxDecoration(
+                  color: _color.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(11),
+                ),
                 child: Icon(Icons.folder_outlined, color: _color, size: 18),
               ),
               const SizedBox(width: 12),
@@ -416,7 +528,13 @@ class _SharedFolderRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(folder.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    Text(
+                      folder.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       'de @${folder.ownerUsername ?? '—'} · ${folder.mimoCount} ${folder.mimoCount == 1 ? 'mimo' : 'mimos'}',
@@ -443,18 +561,30 @@ class _FriendActionsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(color: colors.surface, borderRadius: const BorderRadius.vertical(top: Radius.circular(22))),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+      ),
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 22),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
-            title: Text('@${friend.username}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(
+              '@${friend.username}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             subtitle: const Text('Amigos'),
           ),
           ListTile(
-            leading: const Icon(Icons.person_remove_outlined, color: Colors.red),
-            title: const Text('Remover amizade', style: TextStyle(color: Colors.red)),
+            leading: const Icon(
+              Icons.person_remove_outlined,
+              color: Colors.red,
+            ),
+            title: const Text(
+              'Remover amizade',
+              style: TextStyle(color: Colors.red),
+            ),
             onTap: () => Navigator.of(context).pop('remove'),
           ),
         ],

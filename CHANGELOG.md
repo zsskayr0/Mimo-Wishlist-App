@@ -4,6 +4,25 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.28-alpha] - 2026-08-30
+
+### Added
+- Lista de Pastas mostra os avatares de quem tem acesso, empilhados ao
+  lado do selo "Compartilhada" (conforme wireframe).
+- Convidar pra pasta virou busca ao vivo (igual Amigos), com sugestões
+  de @usuário e avatar — em vez de digitar um @exato e torcer.
+
+### Fixed
+- Aba Amigos: aceitar/recusar solicitação agora atualiza a tela na hora
+  (não espera mais recarregar as 3 listas do zero pra sumir o pedido),
+  os botões ficam desabilitados enquanto processa (sem risco de tocar
+  2x), e erros de rede mostram aviso em vez de falhar silenciosamente.
+  Adicionado "puxar pra atualizar" na lista (não tinha nenhum jeito
+  manual de sincronizar antes).
+- Botão "Adicionar" da busca de amigos agora vira "Pendente" depois de
+  enviar a solicitação, em vez de continuar clicável como se nada
+  tivesse acontecido.
+
 ## [0.0.27-alpha] - 2026-08-30
 
 ### Fixed

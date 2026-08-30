@@ -39,7 +39,8 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   MimoFilters _filters = const MimoFilters();
 
-  bool get _isOwner => widget.folder.ownerId == Supabase.instance.client.auth.currentUser?.id;
+  bool get _isOwner =>
+      widget.folder.ownerId == Supabase.instance.client.auth.currentUser?.id;
 
   @override
   void initState() {
@@ -61,7 +62,11 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   }
 
   Future<void> _openInvite() async {
-    final invited = await InviteMemberSheet.show(context, folderId: widget.folder.id);
+    final invited = await InviteMemberSheet.show(
+      context,
+      folderId: widget.folder.id,
+      existingMemberIds: _members.map((m) => m.userId).toSet(),
+    );
     if (invited == true) _loadMembers();
   }
 
@@ -104,7 +109,10 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   /// gets filed straight into this folder.
   Future<void> _createInline(String title) async {
     try {
-      final id = await MimoRepository().createMimo(title: title, folderId: widget.folder.id);
+      final id = await MimoRepository().createMimo(
+        title: title,
+        folderId: widget.folder.id,
+      );
       final created = await MimoRepository().fetchById(id);
       if (created != null && mounted) {
         setState(() => _mimos = [...?_mimos, created]);
@@ -112,7 +120,9 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Não deu pra criar o mimo. Tenta de novo.')),
+          const SnackBar(
+            content: Text('Não deu pra criar o mimo. Tenta de novo.'),
+          ),
         );
       }
     }
@@ -130,7 +140,9 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   void _toggleOwnerFilter(String userId) {
     setState(() {
-      _filters = _filters.copyWith(ownerId: () => _filters.ownerId == userId ? null : userId);
+      _filters = _filters.copyWith(
+        ownerId: () => _filters.ownerId == userId ? null : userId,
+      );
     });
   }
 
@@ -140,8 +152,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     final stores = <String>{
       for (final mimo in _mimos ?? const <Mimo>[])
         if ((mimo.storeDomain ?? '').isNotEmpty) mimo.storeDomain!,
-    }.toList()
-      ..sort();
+    }.toList()..sort();
     final result = await MimoFilterSheet.show(
       context,
       initial: _filters,
@@ -153,13 +164,16 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     if (result != null) setState(() => _filters = result);
   }
 
-  Color get _folderColor =>
-      Color(int.parse('FF${widget.folder.color.replaceFirst('#', '')}', radix: 16));
+  Color get _folderColor => Color(
+    int.parse('FF${widget.folder.color.replaceFirst('#', '')}', radix: 16),
+  );
 
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
-    final isDesktop = MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width);
+    final isDesktop = MimoBreakpoints.isDesktop(
+      MediaQuery.of(context).size.width,
+    );
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
@@ -172,10 +186,17 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
               width: 12,
               height: 12,
               margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(color: _folderColor, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: _folderColor,
+                shape: BoxShape.circle,
+              ),
             ),
             Expanded(
-              child: Text(widget.folder.name, overflow: TextOverflow.ellipsis, maxLines: 1),
+              child: Text(
+                widget.folder.name,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
             ),
           ],
         ),
@@ -208,13 +229,17 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                   Expanded(
                     child: TextField(
                       controller: _searchController,
-                      onChanged: (value) =>
-                          setState(() => _filters = _filters.copyWith(searchQuery: value)),
+                      onChanged: (value) => setState(
+                        () => _filters = _filters.copyWith(searchQuery: value),
+                      ),
                       style: TextStyle(color: colors.ink, fontSize: 14),
                       decoration: InputDecoration(
                         hintText: 'Buscar mimos ou tags',
-                        hintStyle:
-                            TextStyle(color: colors.inkFaint, fontSize: 14, fontWeight: FontWeight.w300),
+                        hintStyle: TextStyle(
+                          color: colors.inkFaint,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w300,
+                        ),
                         border: InputBorder.none,
                         isDense: true,
                       ),
@@ -224,15 +249,22 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                     onTap: _openFilterSheet,
                     borderRadius: BorderRadius.circular(999),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: _filters.hasActiveFilters ? colors.ink : Colors.transparent,
+                        color: _filters.hasActiveFilters
+                            ? colors.ink
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Icon(
                         Icons.tune,
                         size: 16,
-                        color: _filters.hasActiveFilters ? colors.bg : colors.inkFaint,
+                        color: _filters.hasActiveFilters
+                            ? colors.bg
+                            : colors.inkFaint,
                       ),
                     ),
                   ),
@@ -274,9 +306,15 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Não deu pra carregar a pasta.', style: TextStyle(color: colors.inkSoft)),
+              Text(
+                'Não deu pra carregar a pasta.',
+                style: TextStyle(color: colors.inkSoft),
+              ),
               const SizedBox(height: 12),
-              TextButton(onPressed: _loadMimos, child: const Text('Tentar de novo')),
+              TextButton(
+                onPressed: _loadMimos,
+                child: const Text('Tentar de novo'),
+              ),
             ],
           ),
         ),
@@ -285,13 +323,19 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     final all = _mimos!;
     if (all.isEmpty) {
       return Center(
-        child: Text('Nenhum mimo nesta pasta ainda.', style: TextStyle(color: colors.inkSoft)),
+        child: Text(
+          'Nenhum mimo nesta pasta ainda.',
+          style: TextStyle(color: colors.inkSoft),
+        ),
       );
     }
     final mimos = _filters.apply(all);
     if (mimos.isEmpty) {
       return Center(
-        child: Text('Nenhum mimo encontrado para esses filtros.', style: TextStyle(color: colors.inkSoft)),
+        child: Text(
+          'Nenhum mimo encontrado para esses filtros.',
+          style: TextStyle(color: colors.inkSoft),
+        ),
       );
     }
     return MimoCollectionView(
@@ -344,7 +388,12 @@ class _MemberChip extends StatelessWidget {
             const SizedBox(width: 5),
             Text(
               isEditor ? 'editor' : 'visualizador',
-              style: TextStyle(fontSize: 10.5, color: selected ? colors.bg.withValues(alpha: 0.7) : colors.inkFaint),
+              style: TextStyle(
+                fontSize: 10.5,
+                color: selected
+                    ? colors.bg.withValues(alpha: 0.7)
+                    : colors.inkFaint,
+              ),
             ),
           ],
         ),

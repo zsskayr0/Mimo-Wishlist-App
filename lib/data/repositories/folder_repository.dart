@@ -16,17 +16,20 @@ class AlreadyMemberException implements Exception {}
 /// `folders_select_owner_or_member` RLS policy already returns exactly the
 /// folders this user owns or belongs to, so a plain select is correct.
 class FolderRepository {
-  FolderRepository({SupabaseClient? client}) : _client = client ?? Supabase.instance.client;
+  FolderRepository({SupabaseClient? client})
+    : _client = client ?? Supabase.instance.client;
 
   final SupabaseClient _client;
 
   Future<List<Folder>> fetchFolders() async {
     final rows = await _client
         .from('folders')
-        .select('*, mimos(count)')
+        .select('*, mimos(count), folder_members(users(avatar_url))')
         .order('created_at', ascending: false);
 
-    return (rows as List).map((row) => Folder.fromJson(row as Map<String, dynamic>)).toList();
+    return (rows as List)
+        .map((row) => Folder.fromJson(row as Map<String, dynamic>))
+        .toList();
   }
 
   /// Folders someone else shared with the current user — for the Amigos
@@ -49,12 +52,17 @@ class FolderRepository {
         .neq('owner_id', userId)
         .order('created_at', ascending: false);
 
-    return (rows as List).map((row) => Folder.fromJson(row as Map<String, dynamic>)).toList();
+    return (rows as List)
+        .map((row) => Folder.fromJson(row as Map<String, dynamic>))
+        .toList();
   }
 
   /// Returns the created row (rather than void) so the caller can show it
   /// immediately instead of waiting on a full list refetch.
-  Future<Folder> createFolder({required String name, required String color}) async {
+  Future<Folder> createFolder({
+    required String name,
+    required String color,
+  }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) {
       throw StateError('createFolder called with no signed-in user');
@@ -74,12 +82,14 @@ class FolderRepository {
         .select('role, users(id, username, display_name)')
         .eq('folder_id', folderId);
 
-    return (rows as List).map((row) => FolderMember.fromJson(row as Map<String, dynamic>)).toList();
+    return (rows as List)
+        .map((row) => FolderMember.fromJson(row as Map<String, dynamic>))
+        .toList();
   }
 
-  /// Looks a user up by @username and adds them to the folder. Only the
-  /// folder's owner can actually do this — `folder_members_manage_owner`
-  /// enforces that server-side regardless of what the UI shows.
+  /// Looks a user up by @username and adds them to the folder. Kept for
+  /// an exact-match fallback; `InviteMemberSheet` normally already has
+  /// the userId from its live search and calls [addMember] directly.
   Future<void> inviteMember({
     required String folderId,
     required String username,
@@ -94,8 +104,22 @@ class FolderRepository {
     if ((userRows as List).isEmpty) {
       throw UserNotFoundException();
     }
-    final userId = userRows.first['id'] as String;
+    await addMember(
+      folderId: folderId,
+      userId: userRows.first['id'] as String,
+      role: role,
+    );
+  }
 
+  /// Adds a known user (already resolved — e.g. picked from a search
+  /// result) to the folder. Only the folder's owner can actually do
+  /// this — `folder_members_manage_owner` enforces that server-side
+  /// regardless of what the UI shows.
+  Future<void> addMember({
+    required String folderId,
+    required String userId,
+    required String role,
+  }) async {
     try {
       await _client.from('folder_members').insert({
         'folder_id': folderId,
@@ -107,10 +131,17 @@ class FolderRepository {
       rethrow;
     }
 
-    await _client.from('folders').update({'is_shared': true}).eq('id', folderId);
+    await _client
+        .from('folders')
+        .update({'is_shared': true})
+        .eq('id', folderId);
   }
 
   Future<void> removeMember(String folderId, String userId) async {
-    await _client.from('folder_members').delete().eq('folder_id', folderId).eq('user_id', userId);
+    await _client
+        .from('folder_members')
+        .delete()
+        .eq('folder_id', folderId)
+        .eq('user_id', userId);
   }
 }

@@ -93,7 +93,10 @@ class _FoldersScreenState extends State<FoldersScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Não deu pra carregar as pastas.', style: TextStyle(color: colors.inkSoft)),
+              Text(
+                'Não deu pra carregar as pastas.',
+                style: TextStyle(color: colors.inkSoft),
+              ),
               const SizedBox(height: 12),
               TextButton(onPressed: _load, child: const Text('Tentar de novo')),
             ],
@@ -131,9 +134,54 @@ class _FoldersScreenState extends State<FoldersScreen> {
         itemBuilder: (context, index) => _FolderRow(
           folder: folders[index],
           onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => FolderDetailScreen(folder: folders[index])),
+            MaterialPageRoute(
+              builder: (_) => FolderDetailScreen(folder: folders[index]),
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Small overlapping avatar stack for a shared folder's members, next to
+/// the "Compartilhada" badge — matches the wireframe's `.avatars` row.
+class _AvatarStack extends StatelessWidget {
+  const _AvatarStack({required this.urls, required this.colors});
+
+  final List<String?> urls;
+  final MimoColors colors;
+
+  static const _max = 3;
+  static const _size = 18.0;
+  static const _overlap = 6.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = urls.take(_max).toList();
+    return SizedBox(
+      width: _size + (shown.length - 1) * (_size - _overlap),
+      height: _size,
+      child: Stack(
+        children: [
+          for (var i = 0; i < shown.length; i++)
+            Positioned(
+              left: i * (_size - _overlap),
+              child: Container(
+                width: _size,
+                height: _size,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colors.placeholder,
+                  border: Border.all(color: colors.surface, width: 1.5),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: shown[i] == null
+                    ? null
+                    : Image.network(shown[i]!, fit: BoxFit.cover),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -145,7 +193,8 @@ class _FolderRow extends StatelessWidget {
   final Folder folder;
   final VoidCallback onTap;
 
-  Color get _color => Color(int.parse('FF${folder.color.replaceFirst('#', '')}', radix: 16));
+  Color get _color =>
+      Color(int.parse('FF${folder.color.replaceFirst('#', '')}', radix: 16));
 
   @override
   Widget build(BuildContext context) {
@@ -178,25 +227,51 @@ class _FolderRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(folder.name, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold)),
+                    Text(
+                      folder.name,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 3),
                     Row(
                       children: [
                         Text(
                           '${folder.mimoCount} ${folder.mimoCount == 1 ? 'mimo' : 'mimos'}',
-                          style: TextStyle(fontSize: 12, color: colors.inkFaint, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.inkFaint,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         if (folder.isShared) ...[
                           const SizedBox(width: 8),
+                          if (folder.memberAvatarUrls.isNotEmpty) ...[
+                            _AvatarStack(
+                              urls: folder.memberAvatarUrls,
+                              colors: colors,
+                            ),
+                            const SizedBox(width: 6),
+                          ],
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
-                              color: MimoColors.gradientA.withValues(alpha: 0.12),
+                              color: MimoColors.gradientA.withValues(
+                                alpha: 0.12,
+                              ),
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: const Text(
                               'Compartilhada',
-                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: MimoColors.gradientA),
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                                color: MimoColors.gradientA,
+                              ),
                             ),
                           ),
                         ],
