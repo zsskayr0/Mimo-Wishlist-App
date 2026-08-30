@@ -4,6 +4,16 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.30-alpha] - 2026-08-30
+
+### Changed
+- "Pastas" no Feed não abre mais uma tela separada — agora agrupa os
+  mimos direto ali: cada pasta com seus itens, desorganizados numa
+  seção no fim. É um grid fixo de 2 colunas por seção (não segue o modo
+  de visualização escolhido em Configurações). Gerenciar pastas (criar,
+  renomear, cor, capa) continua acessível por um link no topo dessa
+  visão agrupada.
+
 ## [0.0.29-alpha] - 2026-08-30
 
 ### Added

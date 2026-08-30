@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
@@ -10,9 +11,11 @@ import '../../data/models/tag.dart';
 import '../../data/repositories/folder_repository.dart';
 import '../../data/repositories/mimo_repository.dart';
 import '../../data/repositories/tag_repository.dart';
+import '../folders/folder_detail_screen.dart';
 import '../folders/folders_screen.dart';
 import '../mimo_detail/mimo_detail_screen.dart';
 import 'mimo_filter_sheet.dart';
+import 'widgets/mimo_card.dart';
 import 'widgets/mimo_collection_view.dart';
 
 class FeedScreen extends StatefulWidget {
@@ -39,7 +42,17 @@ class _FeedScreenState extends State<FeedScreen> {
   late Future<List<MimoTag>> _tagsFuture;
   late Future<List<Folder>> _foldersFuture;
 
+  /// Synchronous copy of _foldersFuture's result, kept just for the
+  /// "Pastas" grouped view below — everything else still awaits the
+  /// Future directly (e.g. the filter sheet).
+  List<Folder> _folders = const [];
+
   MimoFilters _filters = const MimoFilters();
+
+  /// "Pastas" toggles this instead of navigating away — mimos grouped
+  /// into their folders inline, unorganized ones below, all still in
+  /// the Feed (see _buildGroupedBody).
+  bool _groupByFolder = false;
 
   @override
   void initState() {
@@ -47,6 +60,9 @@ class _FeedScreenState extends State<FeedScreen> {
     _load();
     _tagsFuture = _tagRepository.fetchAvailableTags();
     _foldersFuture = _folderRepository.fetchFolders();
+    _foldersFuture.then((f) {
+      if (mounted) setState(() => _folders = f);
+    });
   }
 
   @override
@@ -78,8 +94,22 @@ class _FeedScreenState extends State<FeedScreen> {
     }
   }
 
-  void _openFolders() {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FoldersScreen()));
+  /// "Gerenciar pastas" (create/rename/reorder) still lives on the
+  /// dedicated FoldersScreen — only reachable from the grouped view now,
+  /// not the "Pastas" chip itself (that toggles grouping in-place).
+  Future<void> _manageFolders() async {
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const FoldersScreen()));
+    if (!mounted) return;
+    _folderRepository.fetchFolders().then((f) {
+      if (mounted) setState(() => _folders = f);
+    });
+  }
+
+  void _openFolder(Folder folder) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => FolderDetailScreen(folder: folder)),
+    );
   }
 
   Future<void> _openDetail(Mimo mimo) async {
@@ -114,7 +144,9 @@ class _FeedScreenState extends State<FeedScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Não deu pra criar o mimo. Tenta de novo.')),
+          const SnackBar(
+            content: Text('Não deu pra criar o mimo. Tenta de novo.'),
+          ),
         );
       }
     }
@@ -131,8 +163,7 @@ class _FeedScreenState extends State<FeedScreen> {
     final stores = <String>{
       for (final mimo in _mimos ?? const <Mimo>[])
         if ((mimo.storeDomain ?? '').isNotEmpty) mimo.storeDomain!,
-    }.toList()
-      ..sort();
+    }.toList()..sort();
     if (!mounted) return;
     final result = await MimoFilterSheet.show(
       context,
@@ -155,7 +186,9 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
-    final isDesktop = MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width);
+    final isDesktop = MimoBreakpoints.isDesktop(
+      MediaQuery.of(context).size.width,
+    );
     return SafeArea(
       bottom: false,
       child: Column(
@@ -174,7 +207,14 @@ class _FeedScreenState extends State<FeedScreen> {
                   child: const MimoMark(size: 26),
                 ),
                 const SizedBox(width: 8),
-                Text('Mimo', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: colors.ink)),
+                Text(
+                  'Mimo',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: colors.ink,
+                  ),
+                ),
                 const Spacer(),
               ],
             ),
@@ -196,11 +236,17 @@ class _FeedScreenState extends State<FeedScreen> {
                   Expanded(
                     child: TextField(
                       controller: _searchController,
-                      onChanged: (value) => setState(() => _filters = _filters.copyWith(searchQuery: value)),
+                      onChanged: (value) => setState(
+                        () => _filters = _filters.copyWith(searchQuery: value),
+                      ),
                       style: TextStyle(color: colors.ink, fontSize: 14),
                       decoration: InputDecoration(
                         hintText: 'Buscar mimos ou tags',
-                        hintStyle: TextStyle(color: colors.inkFaint, fontSize: 14, fontWeight: FontWeight.w300),
+                        hintStyle: TextStyle(
+                          color: colors.inkFaint,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w300,
+                        ),
                         border: InputBorder.none,
                         isDense: true,
                       ),
@@ -213,7 +259,11 @@ class _FeedScreenState extends State<FeedScreen> {
                         _filters = _filters.copyWith(searchQuery: '');
                       }),
                       borderRadius: BorderRadius.circular(999),
-                      child: Icon(Icons.close, size: 16, color: colors.inkFaint),
+                      child: Icon(
+                        Icons.close,
+                        size: 16,
+                        color: colors.inkFaint,
+                      ),
                     ),
                 ],
               ),
@@ -225,10 +275,21 @@ class _FeedScreenState extends State<FeedScreen> {
             builder: (context, snapshot) {
               final tags = snapshot.data ?? const [];
               final chips = <Widget>[
-                _FilterChip(label: 'Pastas', icon: Icons.folder_outlined, onTap: _openFolders),
-                SizedBox(height: 20, width: 1, child: ColoredBox(color: colors.border)),
                 _FilterChip(
-                  label: _filters.hasActiveFilters ? 'Filtros (${_filters.activeCount})' : 'Filtros',
+                  label: 'Pastas',
+                  icon: Icons.folder_outlined,
+                  selected: _groupByFolder,
+                  onTap: () => setState(() => _groupByFolder = !_groupByFolder),
+                ),
+                SizedBox(
+                  height: 20,
+                  width: 1,
+                  child: ColoredBox(color: colors.border),
+                ),
+                _FilterChip(
+                  label: _filters.hasActiveFilters
+                      ? 'Filtros (${_filters.activeCount})'
+                      : 'Filtros',
                   icon: Icons.tune,
                   selected: _filters.hasActiveFilters,
                   onTap: _openFilterSheet,
@@ -298,6 +359,12 @@ class _FeedScreenState extends State<FeedScreen> {
         }),
       );
     }
+    if (_groupByFolder) {
+      return RefreshIndicator(
+        onRefresh: _load,
+        child: _buildGroupedBody(colors, mimos),
+      );
+    }
     return RefreshIndicator(
       onRefresh: _load,
       child: MimoCollectionView(
@@ -311,10 +378,143 @@ class _FeedScreenState extends State<FeedScreen> {
       ),
     );
   }
+
+  /// "Pastas" toggled on: mimos grouped into their own folder's section
+  /// (in the same order as _folders — newest folder first), unorganized
+  /// ones in a final section below. A fixed 2-column grid regardless of
+  /// the view-mode setting — reusing every view mode's renderer per
+  /// section wasn't worth the complexity this needed to ship.
+  Widget _buildGroupedBody(MimoColors colors, List<Mimo> mimos) {
+    final byFolder = <String, List<Mimo>>{};
+    final unorganized = <Mimo>[];
+    for (final mimo in mimos) {
+      final folderId = mimo.folderId;
+      if (folderId == null) {
+        unorganized.add(mimo);
+      } else {
+        (byFolder[folderId] ??= []).add(mimo);
+      }
+    }
+    final sections = _folders.where((f) => byFolder.containsKey(f.id)).toList();
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
+      children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: _manageFolders,
+            icon: const Icon(Icons.settings_outlined, size: 15),
+            label: const Text('Gerenciar pastas'),
+          ),
+        ),
+        for (final folder in sections) ...[
+          _FolderSectionHeader(
+            folder: folder,
+            count: byFolder[folder.id]!.length,
+            onTap: () => _openFolder(folder),
+          ),
+          const SizedBox(height: 10),
+          _GroupedGrid(mimos: byFolder[folder.id]!, onTap: _openDetail),
+          const SizedBox(height: 22),
+        ],
+        if (unorganized.isNotEmpty) ...[
+          _FolderSectionHeader(folder: null, count: unorganized.length),
+          const SizedBox(height: 10),
+          _GroupedGrid(mimos: unorganized, onTap: _openDetail),
+        ],
+      ],
+    );
+  }
+}
+
+class _FolderSectionHeader extends StatelessWidget {
+  const _FolderSectionHeader({
+    required this.folder,
+    required this.count,
+    this.onTap,
+  });
+
+  /// Null renders the "Desorganizado" section instead of a real folder.
+  final Folder? folder;
+  final int count;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
+    final label = folder?.name ?? 'Desorganizado';
+    final dotColor = folder == null
+        ? colors.inkFaint
+        : Color(
+            int.parse('FF${folder!.color.replaceFirst('#', '')}', radix: 16),
+          );
+
+    final row = Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          '· $count',
+          style: TextStyle(
+            fontSize: 13,
+            color: colors.inkFaint,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if (onTap != null) ...[
+          const Spacer(),
+          Icon(Icons.chevron_right, size: 18, color: colors.inkFaint),
+        ],
+      ],
+    );
+
+    if (onTap == null) return row;
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: row,
+    );
+  }
+}
+
+class _GroupedGrid extends StatelessWidget {
+  const _GroupedGrid({required this.mimos, required this.onTap});
+
+  final List<Mimo> mimos;
+  final ValueChanged<Mimo> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return MasonryGridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      mainAxisSpacing: 14,
+      crossAxisSpacing: 14,
+      itemCount: mimos.length,
+      itemBuilder: (context, index) =>
+          MimoCard(mimo: mimos[index], onTap: () => onTap(mimos[index])),
+    );
+  }
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, this.selected = false, this.icon, this.onTap});
+  const _FilterChip({
+    required this.label,
+    this.selected = false,
+    this.icon,
+    this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -358,7 +558,11 @@ class _FilterChip extends StatelessWidget {
     );
 
     if (onTap == null) return chip;
-    return InkWell(borderRadius: BorderRadius.circular(999), onTap: onTap, child: chip);
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: chip,
+    );
   }
 }
 
@@ -386,7 +590,11 @@ class _MessageState extends StatelessWidget {
           children: [
             Icon(icon, size: 32, color: colors.inkFaint),
             const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(color: colors.inkSoft)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: colors.inkSoft),
+            ),
             const SizedBox(height: 12),
             TextButton(onPressed: onRetry, child: Text(retryLabel)),
           ],
