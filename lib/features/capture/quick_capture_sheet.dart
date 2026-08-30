@@ -255,6 +255,11 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
     final folderId = await FolderPickerSheet.show(context, folders: _folders, selectedFolderId: _selectedFolderId);
     if (!mounted) return;
     setState(() => _selectedFolderId = folderId);
+    // The picker can create a folder on-the-go — _folders might be
+    // missing it, so refresh regardless of whether that happened here.
+    FolderRepository().fetchFolders().then((f) {
+      if (mounted) setState(() => _folders = f);
+    });
   }
 
   // ---------------------------------------------------------------------

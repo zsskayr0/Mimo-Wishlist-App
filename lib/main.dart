@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/layout/view_mode_controller.dart';
 import 'core/theme/mimo_colors.dart';
 import 'core/theme/mimo_text.dart';
 import 'core/theme/theme_controller.dart';
@@ -28,6 +29,7 @@ Future<void> main() async {
   }
 
   await ThemeController.initialize();
+  await ViewModeController.initialize();
 
   runApp(MimoApp(supabaseConfigured: configured));
 }

@@ -4,6 +4,29 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.17-alpha] - 2026-08-30
+
+### Added
+- Criar pasta nova on-the-go direto do seletor de pasta ("Criar nova
+  pasta" abre o sheet de criação sem sair do fluxo de captura/edição; ao
+  salvar, já volta selecionada).
+- Busca ao escolher pasta (`FolderPickerSheet`), quando há mais de 4
+  pastas.
+- Configurações → Visualização: escolha independente pra celular (Lista,
+  Lista detalhada, Grid 2/3/4 colunas) e desktop (Lista, Lista detalhada,
+  Tabela estilo Notion, Grid dinâmico), persistida (`ViewModeController`,
+  mesmo padrão do `ThemeController`). Aplicada no Feed e na tela de
+  Pasta via o novo `MimoCollectionView`.
+- Tabela (desktop): colunas de capa, título, preço, pasta, tags,
+  prioridade e status de compra, com cabeçalho e divisórias finas —
+  substitui o grid quando esse modo é escolhido.
+
+### Changed
+- O toggle avulso "Dinâmico" saiu do Feed/Pasta — a mesma ideia (capas
+  com a proporção real da imagem) agora é o modo "Grid dinâmico" nas
+  Configurações, junto dos outros modos de visualização, em vez de um
+  controle solto de sessão.
+
 ## [0.0.16-alpha] - 2026-08-29
 
 ### Added

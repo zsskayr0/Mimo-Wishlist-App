@@ -3,6 +3,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/layout/mimo_view_mode.dart';
+import '../../core/layout/view_mode_controller.dart';
 import '../../core/theme/mimo_colors.dart';
 import '../../core/theme/theme_controller.dart';
 import '../../data/models/user_profile.dart';
@@ -158,6 +160,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ],
                         );
                       },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _SectionLabel('Visualização'),
+              const SizedBox(height: 10),
+              _Group(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            _IconSquare(icon: Icons.smartphone_outlined),
+                            const SizedBox(width: 12),
+                            const Text('No celular', style: TextStyle(fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        ValueListenableBuilder<MobileMimoView>(
+                          valueListenable: ViewModeController.instance.mobileMode,
+                          builder: (context, mode, _) => Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (final option in MobileMimoView.values)
+                                _ViewModeChip(
+                                  label: option.label,
+                                  selected: option == mode,
+                                  onTap: () => ViewModeController.instance.setMobileMode(option),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _Divider(colors: colors),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            _IconSquare(icon: Icons.desktop_windows_outlined),
+                            const SizedBox(width: 12),
+                            const Text('No desktop', style: TextStyle(fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        ValueListenableBuilder<DesktopMimoView>(
+                          valueListenable: ViewModeController.instance.desktopMode,
+                          builder: (context, mode, _) => Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (final option in DesktopMimoView.values)
+                                _ViewModeChip(
+                                  label: option.label,
+                                  selected: option == mode,
+                                  onTap: () => ViewModeController.instance.setDesktopMode(option),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -338,6 +410,35 @@ class _Row extends StatelessWidget {
             else if (onTap != null)
               Icon(Icons.chevron_right, color: colors.inkFaint, size: 20),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ViewModeChip extends StatelessWidget {
+  const _ViewModeChip({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? colors.ink : Colors.transparent,
+          border: Border.all(color: selected ? colors.ink : colors.border, width: 1.5),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: selected ? colors.bg : colors.ink),
         ),
       ),
     );

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
+import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
-import '../../core/widgets/grid_dynamic_icon.dart';
 import '../../data/models/mimo.dart';
 import '../../data/models/mimo_filters.dart';
 import '../../data/models/folder.dart';
@@ -13,7 +12,7 @@ import '../../data/repositories/tag_repository.dart';
 import '../folders/folders_screen.dart';
 import '../mimo_detail/mimo_detail_screen.dart';
 import 'mimo_filter_sheet.dart';
-import 'widgets/mimo_card.dart';
+import 'widgets/mimo_collection_view.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -33,11 +32,6 @@ class _FeedScreenState extends State<FeedScreen> {
   late Future<List<Folder>> _foldersFuture;
 
   MimoFilters _filters = const MimoFilters();
-
-  /// "Se ativado, os cards ficam mais dinâmicos, se ajustando à
-  /// proporção da imagem; se desativado, tudo fica quadrado" — off by
-  /// default, matching the 1x1 crop rule everywhere else in the app.
-  bool _dynamicCovers = false;
 
   /// Ids removed optimistically (a confirmed delete) that the current
   /// [_feedFuture] snapshot might still list, because it was fetched
@@ -198,13 +192,6 @@ class _FeedScreenState extends State<FeedScreen> {
                       selected: _filters.hasActiveFilters,
                       onTap: _openFilterSheet,
                     ),
-                    const SizedBox(width: 8),
-                    _FilterChip(
-                      label: 'Dinâmico',
-                      iconBuilder: (color) => GridDynamicIcon(color: color),
-                      selected: _dynamicCovers,
-                      onTap: () => setState(() => _dynamicCovers = !_dynamicCovers),
-                    ),
                     for (final tag in tags) ...[
                       const SizedBox(width: 8),
                       _FilterChip(
@@ -260,23 +247,11 @@ class _FeedScreenState extends State<FeedScreen> {
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 1100),
-                      // Masonry, not a fixed-aspect-ratio grid: cards with a
-                      // short title / no price were still forced to the
-                      // tallest card's cell height, leaving blank space
-                      // under the pill. Each card now sizes to its own
-                      // content; maxCrossAxisExtent keeps the same
-                      // grows-with-window-width column behaviour.
-                      child: MasonryGridView.extent(
+                      child: MimoCollectionView(
+                        mimos: mimos,
+                        onTap: _openDetail,
+                        isDesktop: MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width),
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
-                        maxCrossAxisExtent: 190,
-                        mainAxisSpacing: 14,
-                        crossAxisSpacing: 14,
-                        itemCount: mimos.length,
-                        itemBuilder: (context, index) => MimoCard(
-                          mimo: mimos[index],
-                          onTap: () => _openDetail(mimos[index]),
-                          dynamicCover: _dynamicCovers,
-                        ),
                       ),
                     ),
                   ),
@@ -291,15 +266,11 @@ class _FeedScreenState extends State<FeedScreen> {
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, this.selected = false, this.icon, this.iconBuilder, this.onTap});
+  const _FilterChip({required this.label, this.selected = false, this.icon, this.onTap});
 
   final String label;
   final bool selected;
   final IconData? icon;
-
-  /// For an icon that isn't a Material `IconData` (e.g. the SVG dynamic-
-  /// covers glyph) — takes precedence over [icon] when both are given.
-  final Widget Function(Color color)? iconBuilder;
   final VoidCallback? onTap;
 
   @override
@@ -317,10 +288,7 @@ class _FilterChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (iconBuilder != null) ...[
-            iconBuilder!(iconColor),
-            const SizedBox(width: 6),
-          ] else if (icon != null) ...[
+          if (icon != null) ...[
             Icon(icon, size: 14, color: iconColor),
             const SizedBox(width: 6),
           ],

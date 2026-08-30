@@ -2,6 +2,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:mimo/core/layout/view_mode_controller.dart';
 import 'package:mimo/core/theme/theme_controller.dart';
 import 'package:mimo/main.dart';
 
@@ -9,6 +10,7 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     await ThemeController.initialize();
+    await ViewModeController.initialize();
   });
 
   testWidgets('MimoApp boots and shows the bootstrap screen', (tester) async {
