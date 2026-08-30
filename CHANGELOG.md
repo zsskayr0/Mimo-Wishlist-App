@@ -4,6 +4,20 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.20-alpha] - 2026-08-30
+
+### Fixed
+- Achado no log do dev build da v0.0.19: `FolderRepository.fetchSharedWithMe`
+  quebrava com `PGRST201` (embed ambíguo) assim que a aba Amigos abria —
+  `folders` tem dois caminhos até `users` (o FK direto `owner_id` e o
+  many-to-many via `folder_members`), então `users(username)` sozinho não
+  bastava pro Postgrest escolher; agora usa `users!folders_owner_id_fkey`.
+- Overflow real no Feed no desktop: a barra de tags virando `Wrap` (fix
+  da v0.0.19) podia crescer sem limite com muitas tags e estourar a
+  altura disponível pro grid abaixo. Agora tem um teto de altura (~2
+  linhas) com rolagem própria, então nunca mais estoura o layout
+  independente de quantas tags existirem.
+
 ## [0.0.19-alpha] - 2026-08-30
 
 ### Added

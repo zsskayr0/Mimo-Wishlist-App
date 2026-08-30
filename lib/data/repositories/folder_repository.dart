@@ -34,13 +34,18 @@ class FolderRepository {
   /// `folders` to owner-or-member; `neq('owner_id', ...)` narrows that down
   /// to just the "member, not owner" half, and the `users(username)` embed
   /// is what lets that section say who shared it.
+  ///
+  /// `users!folders_owner_id_fkey` — folders actually has *two* paths to
+  /// users (the owner_id FK directly, and the folder_members many-to-many),
+  /// so a plain `users(username)` is ambiguous to Postgrest (PGRST201);
+  /// this names the specific relationship to embed.
   Future<List<Folder>> fetchSharedWithMe() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return const [];
 
     final rows = await _client
         .from('folders')
-        .select('*, mimos(count), users(username)')
+        .select('*, mimos(count), users!folders_owner_id_fkey(username)')
         .neq('owner_id', userId)
         .order('created_at', ascending: false);
 

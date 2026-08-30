@@ -223,13 +223,22 @@ class _FeedScreenState extends State<FeedScreen> {
                   ),
               ];
               // Desktop has the width to spare: wrap to as many rows as
-              // needed instead of a single row you have to scroll.
-              // Mobile keeps the horizontal-scroll row (draggable — see
+              // needed instead of a single row you have to scroll. Capped
+              // and internally scrollable, not left to grow freely — with
+              // enough tags this is a fixed-height row inside a Column
+              // that also has to fit an Expanded grid below it, and an
+              // unbounded Wrap here can genuinely push that grid into a
+              // real "RenderFlex overflowed" (this isn't hypothetical: it
+              // happened with ~10 tags on a ~650px-tall window). Mobile
+              // keeps the horizontal-scroll row (draggable — see
               // main.dart's app-wide mouse-drag ScrollBehavior).
               if (isDesktop) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Wrap(spacing: 8, runSpacing: 8, children: chips),
+                return ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 86),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Wrap(spacing: 8, runSpacing: 8, children: chips),
+                  ),
                 );
               }
               return SizedBox(
