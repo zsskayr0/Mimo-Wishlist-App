@@ -26,7 +26,13 @@ import '../folders/folder_picker_sheet.dart';
 /// edit mode: fields start pre-filled and saving updates that row instead
 /// of creating a new one.
 class QuickCaptureSheet extends StatefulWidget {
-  const QuickCaptureSheet({super.key, this.editingMimo, this.isDesktop = false});
+  const QuickCaptureSheet({
+    super.key,
+    this.editingMimo,
+    this.isDesktop = false,
+    this.initialUrl,
+    this.initialImageBytes,
+  });
 
   final Mimo? editingMimo;
 
@@ -36,22 +42,45 @@ class QuickCaptureSheet extends StatefulWidget {
   /// card, no drag handle, fixed width) without touching the form itself.
   final bool isDesktop;
 
+  /// Pre-fills the link field (e.g. a URL shared into the app from
+  /// another app's share sheet) — kicks off the same metadata fetch a
+  /// pasted link would. Ignored when [editingMimo] is set.
+  final String? initialUrl;
+
+  /// Pre-fills the cover (e.g. a photo shared into the app). Ignored
+  /// when [editingMimo] is set.
+  final Uint8List? initialImageBytes;
+
   /// On desktop width, "add mimo" and "revisar mimo" are the same
   /// centered floating dialog the wireframe shows for add — not a bottom
   /// sheet stretched edge to edge, which read as oversized/"zoomed" on a
   /// wide window.
-  static Future<bool?> show(BuildContext context, {Mimo? editingMimo}) {
+  static Future<bool?> show(
+    BuildContext context, {
+    Mimo? editingMimo,
+    String? initialUrl,
+    Uint8List? initialImageBytes,
+  }) {
     if (MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width)) {
       return showFloatingDialog<bool>(
         context,
-        builder: (_) => QuickCaptureSheet(editingMimo: editingMimo, isDesktop: true),
+        builder: (_) => QuickCaptureSheet(
+          editingMimo: editingMimo,
+          isDesktop: true,
+          initialUrl: initialUrl,
+          initialImageBytes: initialImageBytes,
+        ),
       );
     }
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => QuickCaptureSheet(editingMimo: editingMimo),
+      builder: (_) => QuickCaptureSheet(
+        editingMimo: editingMimo,
+        initialUrl: initialUrl,
+        initialImageBytes: initialImageBytes,
+      ),
     );
   }
 
@@ -105,6 +134,12 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
       _linkDomain = editing.storeDomain;
       _existingCoverUrl = editing.coverImageUrl;
       _selectedTagIds.addAll(editing.tags.map((t) => t.id));
+    } else {
+      // Shared in from another app's share sheet. The link listener
+      // above picks up the assignment and fetches metadata just like a
+      // pasted link would.
+      if (widget.initialUrl != null) _linkController.text = widget.initialUrl!;
+      _coverBytes = widget.initialImageBytes;
     }
   }
 

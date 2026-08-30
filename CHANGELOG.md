@@ -4,6 +4,29 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.25-alpha] - 2026-08-30
+
+### Added
+- Captura por share intent: Mimo aparece no menu de compartilhar do
+  Android pra links (texto/URL) e fotos. Compartilhar um produto de
+  outro app/navegador abre a captura rápida já preenchida (o link puxa
+  os metadados automaticamente, igual colar manualmente); compartilhar
+  uma foto pré-carrega ela como capa. Funciona com o app fechado ou já
+  aberto.
+
+### Changed
+- Ícone do app com mais respiro em volta da marca (menos "zoom" que a
+  versão anterior, que seguia o SVG oficial cortado rente à borda).
+
+### Fixed
+- `receive_sharing_intent` vendorizado em `third_party/` e fixado na
+  1.8.1 em vez da 1.9.0: a 1.9.0 exige `compileSdk 37`, e essa versão do
+  Android SDK só está instalada aqui como `android-37.0` (esquema de
+  nomeação novo), que o Gradle não resolve pra um `compileSdk 37` cru. A
+  1.8.1 também precisou de um ajuste pontual (compileOptions/kotlinOptions
+  faltando no módulo do plugin causava incompatibilidade Java 11 vs
+  Kotlin 17). Detalhes em `third_party/PATCHES.md`.
+
 ## [0.0.24-alpha] - 2026-08-30
 
 ### Added

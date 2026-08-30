@@ -65,6 +65,13 @@ Future<void> _flattened(int size) async {
   final canvas = ui.Canvas(recorder);
   canvas.scale(size / 64);
   canvas.drawRect(const ui.Rect.fromLTWH(0, 0, 64, 64), ui.Paint()..shader = _brandGradient());
+  // The official app-icon SVG draws the mark edge-to-edge in its 64-unit
+  // box; on a real device (plus Android's own further masking/rounding on
+  // top) that reads as too tightly cropped. Scale it down and recenter
+  // for more breathing room — background stays full-bleed.
+  canvas.translate(32, 32);
+  canvas.scale(0.8);
+  canvas.translate(-32, -32);
   canvas.drawPath(_markPath(), ui.Paint()..color = const ui.Color(0xFFFFFFFF));
   canvas.drawPath(_holeCircle(), ui.Paint()..color = const ui.Color(0xFFE0619A));
   await _writePng(recorder.endRecording(), size, 'assets/icon/app_icon.png');

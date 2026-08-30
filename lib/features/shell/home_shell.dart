@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
 import '../../core/layout/breakpoints.dart';
+import '../../core/services/share_intent_service.dart';
 import '../../core/theme/mimo_colors.dart';
 import '../../core/widgets/mimo_mark.dart';
 import '../capture/quick_capture_sheet.dart';
@@ -43,11 +45,38 @@ class _HomeShellState extends State<HomeShell> {
   int _tabIndex = 0;
   int _feedRefreshTick = 0;
   final _pageController = PageController();
+  final _shareIntent = ShareIntentService();
+  StreamSubscription<SharedCapture>? _shareSub;
+
+  @override
+  void initState() {
+    super.initState();
+    // Cold start via another app's share sheet — still valid even after
+    // AuthGate takes its time routing here (e.g. the user had to log in
+    // first), since it reflects the intent that launched the process.
+    _shareIntent.consumeInitial().then(_handleShare);
+    // Shares received while the app is already running.
+    _shareSub = _shareIntent.stream.listen(_handleShare);
+  }
 
   @override
   void dispose() {
+    _shareSub?.cancel();
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleShare(SharedCapture? capture) async {
+    if (capture == null || !mounted) return;
+    final saved = await QuickCaptureSheet.show(
+      context,
+      initialUrl: capture is SharedCaptureUrl ? capture.text : null,
+      initialImageBytes: capture is SharedCaptureImage ? capture.bytes : null,
+    );
+    if (saved == true && mounted) {
+      setState(() => _feedRefreshTick++);
+      _goToTab(0);
+    }
   }
 
   /// Nav-bar taps jump instantly (no slide-through-intermediate-pages

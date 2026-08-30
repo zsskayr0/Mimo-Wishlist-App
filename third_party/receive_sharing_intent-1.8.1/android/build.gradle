@@ -1,0 +1,60 @@
+buildscript {
+    ext.kotlin_version = '1.9.22'
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.3.1'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+plugins {
+    id "com.android.library"
+    id "kotlin-android"
+}
+
+group 'com.kasem.receive_sharing_intent'
+version '1.6.6'
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+android {
+    if (project.android.hasProperty("namespace")) {
+        namespace 'com.kasem.receive_sharing_intent'
+    }
+
+    // Upstream declares no compileOptions, so AGP falls back to its own
+    // default Java target (11) for this module while the project's
+    // centrally-managed Kotlin plugin compiles it to JVM 17 — "Inconsistent
+    // JVM Target Compatibility" between compileDebugJavaWithJavac and
+    // compileDebugKotlin. Pin both to 17 to match the app (see
+    // android/app/build.gradle.kts) and silence the mismatch. See
+    // ../../../PATCHES.md.
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+    defaultConfig {
+        compileSdk 34
+        minSdkVersion 19
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+    lintOptions {
+        disable 'InvalidPackage'
+    }
+}
