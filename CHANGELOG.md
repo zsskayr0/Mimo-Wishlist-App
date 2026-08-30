@@ -4,6 +4,27 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.22-alpha] - 2026-08-30
+
+### Fixed
+- Achada a causa raiz do bug das tags no desktop: `Container(alignment:
+  Alignment.center)` sem `width` explícito se expande pra preencher
+  qualquer largura *limitada* que o pai dê — mesmo uma "até N" solta,
+  como um `Wrap` — em vez de abraçar o conteúdo. Funcionava na
+  `ListView` horizontal (largura ilimitada ali), mas quebrava dentro de
+  `Wrap`, virando aquelas barras esticadas cheias de espaço vazio. Tirado
+  o `alignment` de onde não fazia falta (`_FilterChip` no Feed, `_Choice`
+  no `MimoFilterSheet` — esse último provavelmente já estava com o
+  mesmo problema sem ter sido notado, já que também vive dentro de
+  `Wrap`), preservando o preenchimento onde era intencional (as duas
+  opções de "Ordenar por", dentro de `Expanded`) via um `width:
+  double.infinity` explícito em vez do `alignment` ambíguo.
+
+### Changed
+- Barra de tags do Feed no desktop simplificada de volta pra rolagem
+  horizontal, igual ao celular — a versão de "quebra em até 2 linhas"
+  não valia a complexidade extra frente ao bug acima.
+
 ## [0.0.21-alpha] - 2026-08-30
 
 ### Added

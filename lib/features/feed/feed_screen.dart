@@ -223,54 +223,38 @@ class _FeedScreenState extends State<FeedScreen> {
             future: _tagsFuture,
             builder: (context, snapshot) {
               final tags = snapshot.data ?? const [];
-              final items = <(Widget, double)>[
-                (
-                  _FilterChip(label: 'Pastas', icon: Icons.folder_outlined, onTap: _openFolders),
-                  _chipWidth('Pastas', hasIcon: true),
-                ),
-                (SizedBox(height: 20, width: 1, child: ColoredBox(color: colors.border)), 1),
-                (
-                  _FilterChip(
-                    label: _filters.hasActiveFilters ? 'Filtros (${_filters.activeCount})' : 'Filtros',
-                    icon: Icons.tune,
-                    selected: _filters.hasActiveFilters,
-                    onTap: _openFilterSheet,
-                  ),
-                  _chipWidth(_filters.hasActiveFilters ? 'Filtros (${_filters.activeCount})' : 'Filtros', hasIcon: true),
+              final chips = <Widget>[
+                _FilterChip(label: 'Pastas', icon: Icons.folder_outlined, onTap: _openFolders),
+                SizedBox(height: 20, width: 1, child: ColoredBox(color: colors.border)),
+                _FilterChip(
+                  label: _filters.hasActiveFilters ? 'Filtros (${_filters.activeCount})' : 'Filtros',
+                  icon: Icons.tune,
+                  selected: _filters.hasActiveFilters,
+                  onTap: _openFilterSheet,
                 ),
                 for (final tag in tags)
-                  (
-                    _FilterChip(
-                      label: '#${tag.name}',
-                      selected: _filters.tagIds.contains(tag.id),
-                      onTap: () => _toggleTagFilter(tag.id),
-                    ),
-                    _chipWidth('#${tag.name}'),
+                  _FilterChip(
+                    label: '#${tag.name}',
+                    selected: _filters.tagIds.contains(tag.id),
+                    onTap: () => _toggleTagFilter(tag.id),
                   ),
               ];
-              // Desktop has the width to spare: flows left to right until
-              // it hits the edge, wraps to a second row, and — this is the
-              // part a plain Wrap can't do on its own — anything past
-              // that second row is dropped rather than pushing the grid
-              // below into overflow or silently requiring a scroll no one
-              // would think to try; those tags stay reachable through
-              // search or Filtros. Mobile keeps the horizontal-scroll row
-              // (draggable — see main.dart's app-wide mouse-drag
-              // ScrollBehavior).
-              if (isDesktop) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _TwoRowChipWrap(items: items),
-                );
-              }
+              // Same horizontal-scroll row on desktop as mobile — the
+              // desktop-only "wraps to 2 rows" version had a real bug
+              // (Container+alignment expands to fill a Wrap's bounded
+              // width instead of hugging the chip's own content — see
+              // _FilterChip below) and wasn't worth the complexity to
+              // chase further. Draggable with the mouse too, not just
+              // touch — see main.dart's app-wide mouse-drag
+              // ScrollBehavior.
               return SizedBox(
                 height: 38,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: items.length,
+                  itemCount: chips.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) => items[index].$1,
+                  itemBuilder: (context, index) => chips[index],
                 ),
               );
             },
@@ -328,56 +312,6 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 }
 
-/// Rough rendered width of a `_FilterChip` with this label — good enough
-/// for "how many of these fit before wrapping", not meant to be exact.
-double _chipWidth(String label, {bool hasIcon = false}) {
-  final painter = TextPainter(
-    text: TextSpan(text: label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-    textDirection: TextDirection.ltr,
-  )..layout();
-  var width = painter.width + 28; // horizontal padding, 14 each side
-  if (hasIcon) width += 20; // icon (14) + gap (6)
-  return width;
-}
-
-/// Lays [items] out left to right, wrapping once the row runs out of
-/// width — same idea as `Wrap` — but stops after two rows instead of
-/// letting a third (or a tenth) push whatever's below it into overflow.
-/// Whatever doesn't fit in those two rows is simply not shown; it's
-/// still reachable through search or Filtros.
-class _TwoRowChipWrap extends StatelessWidget {
-  const _TwoRowChipWrap({required this.items});
-
-  final List<(Widget, double)> items;
-
-  static const _spacing = 8.0;
-  static const _maxRows = 2;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth;
-        final visible = <Widget>[];
-        var rowWidth = 0.0;
-        var row = 1;
-        for (final (child, width) in items) {
-          final needed = rowWidth == 0 ? width : rowWidth + _spacing + width;
-          if (needed > maxWidth) {
-            row++;
-            if (row > _maxRows) break;
-            rowWidth = width;
-          } else {
-            rowWidth = needed;
-          }
-          visible.add(child);
-        }
-        return Wrap(spacing: _spacing, runSpacing: _spacing, children: visible);
-      },
-    );
-  }
-}
-
 class _FilterChip extends StatelessWidget {
   const _FilterChip({required this.label, this.selected = false, this.icon, this.onTap});
 
@@ -390,9 +324,14 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
     final iconColor = selected ? colors.bg : colors.ink;
+    // No `alignment` here on purpose — Container+alignment expands to
+    // fill any *bounded* incoming width (even just "up to N", not
+    // exactly N) and centers the child inside that, instead of hugging
+    // it. Harmless in the old horizontal ListView (unbounded width), but
+    // it's exactly what turned every chip into a full-width bar the one
+    // time this got reused inside a Wrap.
     final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: selected ? colors.ink : colors.surface,
         border: Border.all(color: selected ? colors.ink : colors.border),

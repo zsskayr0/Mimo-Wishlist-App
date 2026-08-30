@@ -95,6 +95,7 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
               label: 'Data de inclusão',
               selected: _filters.sortBy == MimoSortBy.dateAdded,
               colors: colors,
+              fillWidth: true,
               onTap: () => setState(() => _filters = _filters.copyWith(sortBy: MimoSortBy.dateAdded)),
             ),
           ),
@@ -104,6 +105,7 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
               label: 'Valor',
               selected: _filters.sortBy == MimoSortBy.price,
               colors: colors,
+              fillWidth: true,
               onTap: () => setState(() => _filters = _filters.copyWith(sortBy: MimoSortBy.price)),
             ),
           ),
@@ -449,6 +451,7 @@ class _Choice extends StatelessWidget {
     required this.colors,
     required this.onTap,
     this.pill = false,
+    this.fillWidth = false,
   });
 
   final String label;
@@ -457,24 +460,45 @@ class _Choice extends StatelessWidget {
   final VoidCallback onTap;
   final bool pill;
 
+  /// True only for the two "Ordenar por" options, each already inside an
+  /// `Expanded` that wants them to actually fill their half and center
+  /// the label there. Everywhere else this lives inside a `Wrap`, where
+  /// filling would be wrong — see the note below on why this can't just
+  /// be a plain `Container(alignment: Alignment.center)` for both.
+  final bool fillWidth;
+
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(pill ? 999 : 10),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? colors.ink : Colors.transparent,
-          border: Border.all(color: selected ? colors.ink : colors.border, width: 1.5),
-          borderRadius: BorderRadius.circular(pill ? 999 : 10),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: selected ? colors.bg : colors.ink),
-        ),
-      ),
+    final text = Text(
+      label,
+      textAlign: TextAlign.center,
+      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: selected ? colors.bg : colors.ink),
     );
+    final decoration = BoxDecoration(
+      color: selected ? colors.ink : Colors.transparent,
+      border: Border.all(color: selected ? colors.ink : colors.border, width: 1.5),
+      borderRadius: BorderRadius.circular(pill ? 999 : 10),
+    );
+    // `Container(alignment: ...)` expands to fill any *bounded* width
+    // it's given — even a loose "up to N", like a `Wrap` row hands out —
+    // instead of hugging its child; that's what turned every chip into
+    // a full-width bar the one time this got used inside a Wrap. An
+    // explicit `width: double.infinity` doesn't have that ambiguity (it
+    // always means "fill", tight or loose), so that — not `alignment` —
+    // is what `fillWidth` opts into.
+    final child = fillWidth
+        ? Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+            decoration: decoration,
+            child: text,
+          )
+        : Container(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+            decoration: decoration,
+            child: text,
+          );
+
+    return InkWell(borderRadius: BorderRadius.circular(pill ? 999 : 10), onTap: onTap, child: child);
   }
 }
