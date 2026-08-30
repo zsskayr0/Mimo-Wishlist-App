@@ -1,15 +1,14 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
 import '../../core/widgets/floating_dialog.dart';
 import '../../core/widgets/gradient_button.dart';
+import '../../core/widgets/image_picker_sheet.dart';
 import '../../data/models/folder.dart';
 import '../../data/models/mimo.dart';
 import '../../data/models/tag.dart';
@@ -19,7 +18,6 @@ import '../../data/repositories/tag_repository.dart';
 import '../../data/services/image_upload_service.dart';
 import '../../data/services/link_metadata_service.dart';
 import '../folders/folder_picker_sheet.dart';
-import 'crop_image_screen.dart';
 
 /// Manual entry, now with an assist: pasting a link fetches its Open
 /// Graph / product metadata (title, price, cover image) in the
@@ -175,46 +173,20 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
   // Cover image
   // ---------------------------------------------------------------------
 
-  Future<void> _onCoverBadgeTap() async {
-    if (_coverBytes == null && _existingCoverUrl == null) {
-      await _pickImage();
-      return;
-    }
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _CoverActionSheet(colors: MimoColors.of(context)),
-    );
-    if (choice == 'crop' && _coverBytes != null) {
-      await _openCrop(_coverBytes!);
-    } else if (choice == 'replace') {
-      await _pickImage();
-    }
-  }
+  // No forced crop here — a mimo's cover is stored at its original
+  // aspect ratio. 1:1 is purely a *display* choice now (MimoCard's
+  // `dynamicCover: false`, the "Grid quadrado" mode), applied with
+  // AspectRatio + BoxFit.cover at render time — never baked into the
+  // file. Baking a square crop in here was the actual bug behind "grid
+  // dinâmico fica idêntico ao quadrado": every stored cover was already
+  // square by the time either mode tried to render it.
+  Future<void> _onCoverBadgeTap() => _pickImage();
 
   Future<void> _pickImage() async {
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _ImageSourceSheet(colors: MimoColors.of(context)),
-    );
-    if (source == null) return;
-
-    final picked = await ImagePicker().pickImage(source: source, imageQuality: 90);
-    if (picked == null) return;
-
-    final bytes = await picked.readAsBytes();
-    if (!mounted) return;
-    await _openCrop(bytes);
-  }
-
-  Future<void> _openCrop(Uint8List bytes) async {
-    final cropped = await Navigator.of(context).push<Uint8List>(
-      MaterialPageRoute(builder: (_) => CropImageScreen(imageBytes: bytes)),
-    );
-    if (cropped == null) return;
+    final bytes = await pickImageBytes(context);
+    if (bytes == null || !mounted) return;
     setState(() {
-      _coverBytes = cropped;
+      _coverBytes = bytes;
       _existingCoverUrl = null;
     });
   }
@@ -281,7 +253,7 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
       String? coverImageUrl = _existingCoverUrl;
       if (_coverBytes != null) {
         try {
-          coverImageUrl = await ImageUploadService().uploadCover(_coverBytes!);
+          coverImageUrl = await ImageUploadService().upload(_coverBytes!);
         } catch (_) {
           coverImageUrl = _existingCoverUrl;
           if (mounted) {
@@ -650,7 +622,7 @@ class _CoverBox extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: colors.surface, width: 2),
                 ),
-                child: Icon(hasImage ? Icons.crop : Icons.add, size: 13, color: Colors.white),
+                child: Icon(hasImage ? Icons.edit : Icons.add, size: 13, color: Colors.white),
               ),
             ),
           ),
@@ -660,64 +632,6 @@ class _CoverBox extends StatelessWidget {
   }
 }
 
-class _ImageSourceSheet extends StatelessWidget {
-  const _ImageSourceSheet({required this.colors});
-
-  final MimoColors colors;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(color: colors.surface, borderRadius: const BorderRadius.vertical(top: Radius.circular(22))),
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 22),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (Platform.isAndroid || Platform.isIOS)
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Câmera'),
-              onTap: () => Navigator.of(context).pop(ImageSource.camera),
-            ),
-          ListTile(
-            leading: const Icon(Icons.photo_library_outlined),
-            title: const Text('Galeria'),
-            onTap: () => Navigator.of(context).pop(ImageSource.gallery),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CoverActionSheet extends StatelessWidget {
-  const _CoverActionSheet({required this.colors});
-
-  final MimoColors colors;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(color: colors.surface, borderRadius: const BorderRadius.vertical(top: Radius.circular(22))),
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 22),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.crop),
-            title: const Text('Recortar a imagem'),
-            onTap: () => Navigator.of(context).pop('crop'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.image_outlined),
-            title: const Text('Escolher outra'),
-            onTap: () => Navigator.of(context).pop('replace'),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _SegmentOption extends StatelessWidget {
   const _SegmentOption({required this.label, required this.selected, required this.colors, required this.onTap});

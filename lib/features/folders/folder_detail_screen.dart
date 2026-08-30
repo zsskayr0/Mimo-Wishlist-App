@@ -26,24 +26,26 @@ class FolderDetailScreen extends StatefulWidget {
 }
 
 class _FolderDetailScreenState extends State<FolderDetailScreen> {
-  late Future<List<Mimo>> _mimosFuture;
-  late Future<List<FolderMember>> _membersFuture;
+  /// See FeedScreen for why these are cached state, not a bare
+  /// Future+FutureBuilder: a reload swaps them in atomically once ready,
+  /// never clearing to null first, so it never flashes a loading spinner
+  /// over an already-populated grid.
+  List<Mimo>? _mimos;
+  Object? _loadError;
+  List<FolderMember> _members = const [];
+
   late Future<List<MimoTag>> _tagsFuture;
   final _searchController = TextEditingController();
 
   MimoFilters _filters = const MimoFilters();
-
-  /// See FeedScreen for why this exists: makes a delete disappear
-  /// instantly instead of waiting on the next fetch to land.
-  final Set<String> _hiddenIds = {};
 
   bool get _isOwner => widget.folder.ownerId == Supabase.instance.client.auth.currentUser?.id;
 
   @override
   void initState() {
     super.initState();
-    _mimosFuture = MimoRepository().fetchByFolder(widget.folder.id);
-    _membersFuture = FolderRepository().fetchMembers(widget.folder.id);
+    _loadMimos();
+    _loadMembers();
     _tagsFuture = TagRepository().fetchAvailableTags();
   }
 
@@ -53,33 +55,59 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     super.dispose();
   }
 
-  void _reloadMembers() {
-    // Block body — an arrow body assigning a Future-typed field makes the
-    // closure itself return that Future, which setState() rejects at
-    // runtime ("callback argument returned a Future").
-    setState(() {
-      _membersFuture = FolderRepository().fetchMembers(widget.folder.id);
-    });
+  Future<void> _loadMembers() async {
+    final members = await FolderRepository().fetchMembers(widget.folder.id);
+    if (mounted) setState(() => _members = members);
   }
 
   Future<void> _openInvite() async {
     final invited = await InviteMemberSheet.show(context, folderId: widget.folder.id);
-    if (invited == true) _reloadMembers();
+    if (invited == true) _loadMembers();
   }
 
-  Future<void> _reloadMimos() async {
-    final future = MimoRepository().fetchByFolder(widget.folder.id);
-    setState(() {
-      _mimosFuture = future;
-    });
-    await future;
-    if (mounted) setState(_hiddenIds.clear);
+  Future<void> _loadMimos() async {
+    try {
+      final result = await MimoRepository().fetchByFolder(widget.folder.id);
+      if (!mounted) return;
+      setState(() {
+        _mimos = result;
+        _loadError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      if (_mimos == null) {
+        setState(() => _loadError = e);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não deu pra atualizar a pasta.')),
+        );
+      }
+    }
   }
 
   Future<void> _openDetail(Mimo mimo) async {
     final deleted = await MimoDetailScreen.open(context, mimo: mimo);
-    if (deleted == true) setState(() => _hiddenIds.add(mimo.id));
-    _reloadMimos();
+    if (deleted == true && mounted) {
+      setState(() => _mimos = _mimos?.where((m) => m.id != mimo.id).toList());
+    }
+    _loadMimos();
+  }
+
+  /// Table mode's inline priority/status pickers — see FeedScreen.
+  void _updateMimo(Mimo mimo, Mimo Function(Mimo) update) {
+    setState(() {
+      _mimos = _mimos?.map((m) => m.id == mimo.id ? update(m) : m).toList();
+    });
+  }
+
+  void _onPriorityChanged(Mimo mimo, String priority) {
+    _updateMimo(mimo, (m) => m.copyWith(priority: priority));
+    MimoRepository().updatePriority(mimo.id, priority);
+  }
+
+  void _onStatusChanged(Mimo mimo, String status) {
+    _updateMimo(mimo, (m) => m.copyWith(purchaseStatus: status));
+    MimoRepository().updatePurchaseStatus(mimo.id, status);
   }
 
   void _toggleOwnerFilter(String userId) {
@@ -90,21 +118,19 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   Future<void> _openFilterSheet() async {
     final tags = await _tagsFuture;
-    final members = await _membersFuture;
-    final mimos = await _mimosFuture;
+    if (!mounted) return;
     final stores = <String>{
-      for (final mimo in mimos)
+      for (final mimo in _mimos ?? const <Mimo>[])
         if ((mimo.storeDomain ?? '').isNotEmpty) mimo.storeDomain!,
     }.toList()
       ..sort();
-    if (!mounted) return;
     final result = await MimoFilterSheet.show(
       context,
       initial: _filters,
       folders: const [],
       tags: tags,
       stores: stores,
-      members: members,
+      members: _members,
     );
     if (result != null) setState(() => _filters = result);
   }
@@ -115,6 +141,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
+    final isDesktop = MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width);
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
@@ -142,127 +169,119 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
             ),
         ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1100),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: Container(
-                  height: 44,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: colors.surface,
-                    border: Border.all(color: colors.border),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.search, size: 18, color: colors.inkFaint),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (value) =>
-                              setState(() => _filters = _filters.copyWith(searchQuery: value)),
-                          style: TextStyle(color: colors.ink, fontSize: 14),
-                          decoration: InputDecoration(
-                            hintText: 'Buscar mimos ou tags',
-                            hintStyle:
-                                TextStyle(color: colors.inkFaint, fontSize: 14, fontWeight: FontWeight.w300),
-                            border: InputBorder.none,
-                            isDense: true,
-                          ),
-                        ),
-                      ),
-                      InkWell(
-                        onTap: _openFilterSheet,
-                        borderRadius: BorderRadius.circular(999),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _filters.hasActiveFilters ? colors.ink : Colors.transparent,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Icon(
-                            Icons.tune,
-                            size: 16,
-                            color: _filters.hasActiveFilters ? colors.bg : colors.inkFaint,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                border: Border.all(color: colors.border),
+                borderRadius: BorderRadius.circular(12),
               ),
-              FutureBuilder<List<FolderMember>>(
-                future: _membersFuture,
-                builder: (context, snapshot) {
-                  final members = snapshot.data ?? const [];
-                  if (members.isEmpty) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                    child: SizedBox(
-                      height: 30,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          for (final member in members) ...[
-                            _MemberChip(
-                              member: member,
-                              selected: _filters.ownerId == member.userId,
-                              onTap: () => _toggleOwnerFilter(member.userId),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                        ],
+              child: Row(
+                children: [
+                  Icon(Icons.search, size: 18, color: colors.inkFaint),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) =>
+                          setState(() => _filters = _filters.copyWith(searchQuery: value)),
+                      style: TextStyle(color: colors.ink, fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: 'Buscar mimos ou tags',
+                        hintStyle:
+                            TextStyle(color: colors.inkFaint, fontSize: 14, fontWeight: FontWeight.w300),
+                        border: InputBorder.none,
+                        isDense: true,
                       ),
                     ),
-                  );
-                },
+                  ),
+                  InkWell(
+                    onTap: _openFilterSheet,
+                    borderRadius: BorderRadius.circular(999),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _filters.hasActiveFilters ? colors.ink : Colors.transparent,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Icon(
+                        Icons.tune,
+                        size: 16,
+                        color: _filters.hasActiveFilters ? colors.bg : colors.inkFaint,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              Expanded(
-                child: FutureBuilder<List<Mimo>>(
-                  future: _mimosFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    final all = (snapshot.data ?? const [])
-                        .where((m) => !_hiddenIds.contains(m.id))
-                        .toList();
-                    if (all.isEmpty) {
-                      return Center(
-                        child: Text(
-                          'Nenhum mimo nesta pasta ainda.',
-                          style: TextStyle(color: colors.inkSoft),
-                        ),
-                      );
-                    }
-                    final mimos = _filters.apply(all);
-                    if (mimos.isEmpty) {
-                      return Center(
-                        child: Text(
-                          'Nenhum mimo encontrado para esses filtros.',
-                          style: TextStyle(color: colors.inkSoft),
-                        ),
-                      );
-                    }
-                    return MimoCollectionView(
-                      mimos: mimos,
-                      onTap: _openDetail,
-                      isDesktop: MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width),
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                    );
-                  },
+            ),
+          ),
+          if (_members.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: SizedBox(
+                height: 30,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _members.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) => _MemberChip(
+                    member: _members[index],
+                    selected: _filters.ownerId == _members[index].userId,
+                    onTap: () => _toggleOwnerFilter(_members[index].userId),
+                  ),
                 ),
               ),
+            ),
+          Expanded(child: _buildBody(colors, isDesktop)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody(MimoColors colors, bool isDesktop) {
+    if (_mimos == null && _loadError == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_mimos == null && _loadError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Não deu pra carregar a pasta.', style: TextStyle(color: colors.inkSoft)),
+              const SizedBox(height: 12),
+              TextButton(onPressed: _loadMimos, child: const Text('Tentar de novo')),
             ],
           ),
         ),
-      ),
+      );
+    }
+    final all = _mimos!;
+    if (all.isEmpty) {
+      return Center(
+        child: Text('Nenhum mimo nesta pasta ainda.', style: TextStyle(color: colors.inkSoft)),
+      );
+    }
+    final mimos = _filters.apply(all);
+    if (mimos.isEmpty) {
+      return Center(
+        child: Text('Nenhum mimo encontrado para esses filtros.', style: TextStyle(color: colors.inkSoft)),
+      );
+    }
+    return MimoCollectionView(
+      mimos: mimos,
+      onTap: _openDetail,
+      isDesktop: isDesktop,
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      onPriorityChanged: _onPriorityChanged,
+      onStatusChanged: _onStatusChanged,
     );
   }
 }

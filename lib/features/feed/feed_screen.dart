@@ -27,23 +27,23 @@ class _FeedScreenState extends State<FeedScreen> {
   final _folderRepository = FolderRepository();
   final _searchController = TextEditingController();
 
-  late Future<List<Mimo>> _feedFuture;
+  /// Null only before the first load ever completes. A reload always
+  /// swaps this in one atomic `setState` once the new data is in hand —
+  /// never cleared to null first — so leaving Detail, pulling to
+  /// refresh, etc. never flashes a loading spinner over an already-
+  /// populated grid.
+  List<Mimo>? _mimos;
+  Object? _loadError;
+
   late Future<List<MimoTag>> _tagsFuture;
   late Future<List<Folder>> _foldersFuture;
 
   MimoFilters _filters = const MimoFilters();
 
-  /// Ids removed optimistically (a confirmed delete) that the current
-  /// [_feedFuture] snapshot might still list, because it was fetched
-  /// before the delete happened. Filtered out at render time so removal
-  /// is instant instead of waiting on the next network round-trip; cleared
-  /// whenever a fresh fetch lands, since that fetch is already correct.
-  final Set<String> _hiddenIds = {};
-
   @override
   void initState() {
     super.initState();
-    _feedFuture = _repository.fetchFeed();
+    _load();
     _tagsFuture = _tagRepository.fetchAvailableTags();
     _foldersFuture = _folderRepository.fetchFolders();
   }
@@ -54,17 +54,27 @@ class _FeedScreenState extends State<FeedScreen> {
     super.dispose();
   }
 
-  Future<void> _reload() async {
-    final future = _repository.fetchFeed();
-    // A block body, not `() => _feedFuture = future` — an assignment
-    // expression evaluates to the assigned value, so an arrow body here
-    // would make the closure return a Future and setState() throws at
-    // runtime ("callback argument returned a Future").
-    setState(() {
-      _feedFuture = future;
-    });
-    await future;
-    if (mounted) setState(_hiddenIds.clear);
+  /// A failed *refresh* (there's already something on screen) just keeps
+  /// showing what's there and reports it via a snackbar — only a failed
+  /// *first* load replaces the whole screen with an error state.
+  Future<void> _load() async {
+    try {
+      final result = await _repository.fetchFeed();
+      if (!mounted) return;
+      setState(() {
+        _mimos = result;
+        _loadError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      if (_mimos == null) {
+        setState(() => _loadError = e);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não deu pra atualizar o Feed.')),
+        );
+      }
+    }
   }
 
   void _openFolders() {
@@ -73,16 +83,35 @@ class _FeedScreenState extends State<FeedScreen> {
 
   Future<void> _openDetail(Mimo mimo) async {
     final deleted = await MimoDetailScreen.open(context, mimo: mimo);
-    if (deleted == true) setState(() => _hiddenIds.add(mimo.id));
-    _reload();
+    if (deleted == true && mounted) {
+      setState(() => _mimos = _mimos?.where((m) => m.id != mimo.id).toList());
+    }
+    _load();
+  }
+
+  /// Table mode's inline priority/status pickers — updates the local
+  /// list immediately (no reload round-trip) and writes it through.
+  void _updateMimo(Mimo mimo, Mimo Function(Mimo) update) {
+    setState(() {
+      _mimos = _mimos?.map((m) => m.id == mimo.id ? update(m) : m).toList();
+    });
+  }
+
+  void _onPriorityChanged(Mimo mimo, String priority) {
+    _updateMimo(mimo, (m) => m.copyWith(priority: priority));
+    _repository.updatePriority(mimo.id, priority);
+  }
+
+  void _onStatusChanged(Mimo mimo, String status) {
+    _updateMimo(mimo, (m) => m.copyWith(purchaseStatus: status));
+    _repository.updatePurchaseStatus(mimo.id, status);
   }
 
   Future<void> _openFilterSheet() async {
     final folders = await _foldersFuture;
     final tags = await _tagsFuture;
-    final mimos = await _feedFuture;
     final stores = <String>{
-      for (final mimo in mimos)
+      for (final mimo in _mimos ?? const <Mimo>[])
         if ((mimo.storeDomain ?? '').isNotEmpty) mimo.storeDomain!,
     }.toList()
       ..sort();
@@ -108,6 +137,7 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
+    final isDesktop = MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width);
     return SafeArea(
       bottom: false,
       child: Column(
@@ -172,94 +202,95 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
           ),
           const SizedBox(height: 14),
-          SizedBox(
-            height: 36,
-            child: FutureBuilder<List<MimoTag>>(
-              future: _tagsFuture,
-              builder: (context, snapshot) {
-                final tags = snapshot.data ?? const [];
-                return ListView(
+          FutureBuilder<List<MimoTag>>(
+            future: _tagsFuture,
+            builder: (context, snapshot) {
+              final tags = snapshot.data ?? const [];
+              final chips = <Widget>[
+                _FilterChip(label: 'Pastas', icon: Icons.folder_outlined, onTap: _openFolders),
+                SizedBox(height: 20, width: 1, child: ColoredBox(color: colors.border)),
+                _FilterChip(
+                  label: _filters.hasActiveFilters ? 'Filtros (${_filters.activeCount})' : 'Filtros',
+                  icon: Icons.tune,
+                  selected: _filters.hasActiveFilters,
+                  onTap: _openFilterSheet,
+                ),
+                for (final tag in tags)
+                  _FilterChip(
+                    label: '#${tag.name}',
+                    selected: _filters.tagIds.contains(tag.id),
+                    onTap: () => _toggleTagFilter(tag.id),
+                  ),
+              ];
+              // Desktop has the width to spare: wrap to as many rows as
+              // needed instead of a single row you have to scroll.
+              // Mobile keeps the horizontal-scroll row (draggable — see
+              // main.dart's app-wide mouse-drag ScrollBehavior).
+              if (isDesktop) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Wrap(spacing: 8, runSpacing: 8, children: chips),
+                );
+              }
+              return SizedBox(
+                height: 38,
+                child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  children: [
-                    _FilterChip(label: 'Pastas', icon: Icons.folder_outlined, onTap: _openFolders),
-                    const SizedBox(width: 10),
-                    Container(width: 1, color: colors.border),
-                    const SizedBox(width: 10),
-                    _FilterChip(
-                      label: _filters.hasActiveFilters ? 'Filtros (${_filters.activeCount})' : 'Filtros',
-                      icon: Icons.tune,
-                      selected: _filters.hasActiveFilters,
-                      onTap: _openFilterSheet,
-                    ),
-                    for (final tag in tags) ...[
-                      const SizedBox(width: 8),
-                      _FilterChip(
-                        label: '#${tag.name}',
-                        selected: _filters.tagIds.contains(tag.id),
-                        onTap: () => _toggleTagFilter(tag.id),
-                      ),
-                    ],
-                  ],
-                );
-              },
-            ),
+                  itemCount: chips.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) => chips[index],
+                ),
+              );
+            },
           ),
           const SizedBox(height: 16),
-          Expanded(
-            child: FutureBuilder<List<Mimo>>(
-              future: _feedFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return _MessageState(
-                    icon: Icons.error_outline,
-                    message: 'Não deu pra carregar o Feed.\n${snapshot.error}',
-                    onRetry: _reload,
-                  );
-                }
-                final all = (snapshot.data ?? const [])
-                    .where((m) => !_hiddenIds.contains(m.id))
-                    .toList();
-                if (all.isEmpty) {
-                  return _MessageState(
-                    icon: Icons.favorite_border,
-                    message: 'Nenhum mimo ainda.\nToque no + para salvar o primeiro.',
-                    onRetry: _reload,
-                  );
-                }
-                final mimos = _filters.apply(all);
-                if (mimos.isEmpty) {
-                  return _MessageState(
-                    icon: Icons.search_off,
-                    message: 'Nenhum mimo encontrado para esses filtros.',
-                    retryLabel: 'Limpar filtros',
-                    onRetry: () async => setState(() {
-                      _searchController.clear();
-                      _filters = const MimoFilters();
-                    }),
-                  );
-                }
-                return RefreshIndicator(
-                  onRefresh: _reload,
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1100),
-                      child: MimoCollectionView(
-                        mimos: mimos,
-                        onTap: _openDetail,
-                        isDesktop: MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width),
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
+          Expanded(child: _buildBody(colors, isDesktop)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBody(MimoColors colors, bool isDesktop) {
+    if (_mimos == null && _loadError == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_mimos == null && _loadError != null) {
+      return _MessageState(
+        icon: Icons.error_outline,
+        message: 'Não deu pra carregar o Feed.\n$_loadError',
+        onRetry: _load,
+      );
+    }
+    final all = _mimos!;
+    if (all.isEmpty) {
+      return _MessageState(
+        icon: Icons.favorite_border,
+        message: 'Nenhum mimo ainda.\nToque no + para salvar o primeiro.',
+        onRetry: _load,
+      );
+    }
+    final mimos = _filters.apply(all);
+    if (mimos.isEmpty) {
+      return _MessageState(
+        icon: Icons.search_off,
+        message: 'Nenhum mimo encontrado para esses filtros.',
+        retryLabel: 'Limpar filtros',
+        onRetry: () async => setState(() {
+          _searchController.clear();
+          _filters = const MimoFilters();
+        }),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: MimoCollectionView(
+        mimos: mimos,
+        onTap: _openDetail,
+        isDesktop: isDesktop,
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
+        onPriorityChanged: _onPriorityChanged,
+        onStatusChanged: _onStatusChanged,
       ),
     );
   }
@@ -278,7 +309,7 @@ class _FilterChip extends StatelessWidget {
     final colors = MimoColors.of(context);
     final iconColor = selected ? colors.bg : colors.ink;
     final chip = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: selected ? colors.ink : colors.surface,

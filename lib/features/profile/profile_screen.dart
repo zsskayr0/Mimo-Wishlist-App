@@ -29,6 +29,16 @@ class _ProfileData {
   final int unorganizedCount;
   final int comprados;
   final int arquivados;
+
+  _ProfileData withProfile(UserProfile profile) => _ProfileData(
+        profile: profile,
+        mimoCount: mimoCount,
+        folderCount: folderCount,
+        friendCount: friendCount,
+        unorganizedCount: unorganizedCount,
+        comprados: comprados,
+        arquivados: arquivados,
+      );
 }
 
 class ProfileScreen extends StatefulWidget {
@@ -39,42 +49,62 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  late Future<_ProfileData> _dataFuture;
+  /// Null only before the first load ever completes — see FeedScreen for
+  /// why this is cached state instead of a bare Future+FutureBuilder.
+  _ProfileData? _data;
+  Object? _loadError;
 
   @override
   void initState() {
     super.initState();
-    _dataFuture = _load();
+    _load();
   }
 
-  Future<_ProfileData> _load() async {
-    final results = await Future.wait([
-      UserRepository().fetchMe(),
-      MimoRepository().fetchFeed(),
-      FolderRepository().fetchFolders(),
-      FriendshipRepository().fetchFriends(),
-    ]);
-    final profile = results[0] as UserProfile;
-    final mimos = results[1] as List<Mimo>;
-    final folders = results[2] as List;
-    final friends = results[3] as List;
+  Future<void> _load() async {
+    try {
+      final results = await Future.wait([
+        UserRepository().fetchMe(),
+        MimoRepository().fetchFeed(),
+        FolderRepository().fetchFolders(),
+        FriendshipRepository().fetchFriends(),
+      ]);
+      final profile = results[0] as UserProfile;
+      final mimos = results[1] as List<Mimo>;
+      final folders = results[2] as List;
+      final friends = results[3] as List;
 
-    return _ProfileData(
-      profile: profile,
-      mimoCount: mimos.length,
-      folderCount: folders.length,
-      friendCount: friends.length,
-      unorganizedCount: mimos.where((m) => m.isUnorganized).length,
-      comprados: mimos.where((m) => m.purchaseStatus == 'comprado').length,
-      arquivados: mimos.where((m) => m.purchaseStatus == 'arquivado').length,
-    );
+      if (!mounted) return;
+      setState(() {
+        _data = _ProfileData(
+          profile: profile,
+          mimoCount: mimos.length,
+          folderCount: folders.length,
+          friendCount: friends.length,
+          unorganizedCount: mimos.where((m) => m.isUnorganized).length,
+          comprados: mimos.where((m) => m.purchaseStatus == 'comprado').length,
+          arquivados: mimos.where((m) => m.purchaseStatus == 'arquivado').length,
+        );
+        _loadError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      if (_data == null) {
+        setState(() => _loadError = e);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não deu pra atualizar o perfil.')),
+        );
+      }
+    }
   }
-
-  void _reload() => setState(() => _dataFuture = _load());
 
   Future<void> _editProfile(UserProfile profile) async {
+    // EditProfileSheet already hands back the saved profile — swap it
+    // straight into the cached data instead of a full reload.
     final updated = await EditProfileSheet.show(context, profile: profile);
-    if (updated != null) _reload();
+    if (updated != null && mounted) {
+      setState(() => _data = _data?.withProfile(updated));
+    }
   }
 
   void _openFiltered(String title, bool Function(Mimo) filter) {
@@ -86,35 +116,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
-    return SafeArea(
-      child: FutureBuilder<_ProfileData>(
-        future: _dataFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError || !snapshot.hasData) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Não deu pra carregar o perfil.', style: TextStyle(color: colors.inkSoft)),
-                    const SizedBox(height: 12),
-                    TextButton(onPressed: _reload, child: const Text('Tentar de novo')),
-                  ],
-                ),
-              ),
-            );
-          }
+    return SafeArea(child: _buildBody(colors));
+  }
 
-          final data = snapshot.data!;
-          final profile = data.profile;
+  Widget _buildBody(MimoColors colors) {
+    if (_data == null && _loadError == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_data == null && _loadError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Não deu pra carregar o perfil.', style: TextStyle(color: colors.inkSoft)),
+              const SizedBox(height: 12),
+              TextButton(onPressed: _load, child: const Text('Tentar de novo')),
+            ],
+          ),
+        ),
+      );
+    }
 
-          return RefreshIndicator(
-            onRefresh: () async => _reload(),
-            child: Center(
+    final data = _data!;
+    final profile = data.profile;
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 640),
                 child: ListView(
@@ -125,11 +155,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Center(
                       child: Column(
                         children: [
-                          Container(
-                            width: 76,
-                            height: 76,
-                            decoration: BoxDecoration(color: colors.placeholder, shape: BoxShape.circle),
-                            child: Icon(Icons.person_outline, size: 30, color: colors.inkFaint),
+                          ClipOval(
+                            child: Container(
+                              width: 76,
+                              height: 76,
+                              color: colors.placeholder,
+                              alignment: Alignment.center,
+                              child: profile.avatarUrl == null
+                                  ? Icon(Icons.person_outline, size: 30, color: colors.inkFaint)
+                                  : Image.network(profile.avatarUrl!, fit: BoxFit.cover, width: 76, height: 76),
+                            ),
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -138,6 +173,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text('@${profile.username}', style: TextStyle(fontSize: 13, color: colors.inkFaint)),
+                          if (profile.bio != null && profile.bio!.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              child: Text(
+                                profile.bio!,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 13, color: colors.inkSoft, height: 1.4),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 6),
                           TextButton(
                             onPressed: () => _editProfile(profile),
@@ -191,9 +237,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           );
-        },
-      ),
-    );
   }
 }
 

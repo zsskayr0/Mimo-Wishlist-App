@@ -93,11 +93,13 @@ class MimoColors {
     colors: [gradientA, gradientB],
   );
 
-  // Auth screen only — see class doc.
-  static const authBg = Color(0xFF100D1A);
-  static const authPanel = Color(0xFF17131F);
-  static const authInputBg = Color(0xFF1B1726);
-  static const authBorder = Color(0xFF2C2640);
-  static const authText = Color(0xFFF4F1FA);
-  static const authPlaceholder = Color(0xFF7C7398);
+  // Auth screen only — see class doc. True neutral black/grays, not the
+  // purple-tinted values these started as (0xFF100D1A etc. — B > R > G
+  // read as a visible purple cast against a real AMOLED black).
+  static const authBg = Color(0xFF000000);
+  static const authPanel = Color(0xFF0D0D0D);
+  static const authInputBg = Color(0xFF161616);
+  static const authBorder = Color(0xFF262626);
+  static const authText = Color(0xFFF5F5F5);
+  static const authPlaceholder = Color(0xFF8A8A8A);
 }

@@ -3,30 +3,32 @@ import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Uploads a cropped cover image to the `mimo-covers` bucket, under the
-/// current user's own folder — see 006_cover_storage.sql for the storage
-/// policies that path layout is built around.
+/// Uploads an image to a public storage bucket, under the current user's
+/// own folder (`{userId}/...`) — every bucket this is used with follows
+/// the same owner-scoped-path policy pattern (see 006_cover_storage.sql
+/// for `mimo-covers`, 007_avatar_storage.sql for `avatars`).
 class ImageUploadService {
-  ImageUploadService({SupabaseClient? client}) : _client = client ?? Supabase.instance.client;
+  ImageUploadService({SupabaseClient? client, this.bucket = 'mimo-covers'})
+      : _client = client ?? Supabase.instance.client;
 
   final SupabaseClient _client;
-  static const _bucket = 'mimo-covers';
+  final String bucket;
 
-  Future<String> uploadCover(Uint8List bytes) async {
+  Future<String> upload(Uint8List bytes) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) {
-      throw StateError('uploadCover called with no signed-in user');
+      throw StateError('ImageUploadService.upload called with no signed-in user');
     }
 
     final suffix = Random().nextInt(1 << 32).toRadixString(16);
     final path = '$userId/${DateTime.now().microsecondsSinceEpoch}_$suffix.jpg';
 
-    await _client.storage.from(_bucket).uploadBinary(
+    await _client.storage.from(bucket).uploadBinary(
           path,
           bytes,
           fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true),
         );
 
-    return _client.storage.from(_bucket).getPublicUrl(path);
+    return _client.storage.from(bucket).getPublicUrl(path);
   }
 }

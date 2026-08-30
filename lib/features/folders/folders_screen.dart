@@ -15,34 +15,44 @@ class FoldersScreen extends StatefulWidget {
 
 class _FoldersScreenState extends State<FoldersScreen> {
   final _repository = FolderRepository();
-  late Future<List<Folder>> _foldersFuture;
 
-  /// A just-created folder, shown immediately instead of waiting on the
-  /// next fetch to include it — same idea as the delete-side fix in
-  /// FeedScreen/FolderDetailScreen, mirrored for additions.
-  final List<Folder> _optimisticFolders = [];
+  /// Null only before the first load ever completes — see FeedScreen for
+  /// why this is cached state instead of a bare Future+FutureBuilder.
+  List<Folder>? _folders;
+  Object? _loadError;
 
   @override
   void initState() {
     super.initState();
-    _foldersFuture = _repository.fetchFolders();
+    _load();
   }
 
-  Future<void> _reload() async {
-    final future = _repository.fetchFolders();
-    // Block body — see FeedScreen._reload for why an arrow body here
-    // would make setState() throw ("callback argument returned a Future").
-    setState(() {
-      _foldersFuture = future;
-    });
-    await future;
-    if (mounted) setState(_optimisticFolders.clear);
+  Future<void> _load() async {
+    try {
+      final result = await _repository.fetchFolders();
+      if (!mounted) return;
+      setState(() {
+        _folders = result;
+        _loadError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      if (_folders == null) {
+        setState(() => _loadError = e);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não deu pra atualizar as pastas.')),
+        );
+      }
+    }
   }
 
   Future<void> _openCreateFolder() async {
     final created = await CreateFolderSheet.show(context);
-    if (created != null) setState(() => _optimisticFolders.insert(0, created));
-    _reload();
+    if (created != null) {
+      setState(() => _folders = [created, ...?_folders]);
+    }
+    _load();
   }
 
   @override
@@ -66,52 +76,62 @@ class _FoldersScreenState extends State<FoldersScreen> {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
-          child: FutureBuilder<List<Folder>>(
-            future: _foldersFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting && _optimisticFolders.isEmpty) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final fetched = snapshot.data ?? const [];
-              final knownIds = fetched.map((f) => f.id).toSet();
-              final folders = [
-                ..._optimisticFolders.where((f) => !knownIds.contains(f.id)),
-                ...fetched,
-              ];
-              if (folders.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.folder_outlined, size: 32, color: colors.inkFaint),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Nenhuma pasta ainda.\nToque em + para criar a primeira.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: colors.inkSoft),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              return RefreshIndicator(
-                onRefresh: _reload,
-                child: ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                  itemCount: folders.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) => _FolderRow(
-                    folder: folders[index],
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => FolderDetailScreen(folder: folders[index])),
-                    ),
-                  ),
-                ),
-              );
-            },
+          child: _buildBody(colors),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody(MimoColors colors) {
+    if (_folders == null && _loadError == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_folders == null && _loadError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Não deu pra carregar as pastas.', style: TextStyle(color: colors.inkSoft)),
+              const SizedBox(height: 12),
+              TextButton(onPressed: _load, child: const Text('Tentar de novo')),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final folders = _folders!;
+    if (folders.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.folder_outlined, size: 32, color: colors.inkFaint),
+              const SizedBox(height: 12),
+              Text(
+                'Nenhuma pasta ainda.\nToque em + para criar a primeira.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: colors.inkSoft),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        itemCount: folders.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, index) => _FolderRow(
+          folder: folders[index],
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => FolderDetailScreen(folder: folders[index])),
           ),
         ),
       ),

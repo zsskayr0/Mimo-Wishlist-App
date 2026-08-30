@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -50,6 +51,7 @@ class MimoApp extends StatelessWidget {
           themeMode: themeMode,
           theme: _buildTheme(MimoColors.light, Brightness.light),
           darkTheme: _buildTheme(MimoColors.dark, Brightness.dark),
+          scrollBehavior: _MouseDragScrollBehavior(),
           home: supabaseConfigured ? const AuthGate() : const _MissingEnvScreen(),
         );
       },
@@ -109,4 +111,21 @@ class _MissingEnvScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Flutter's default `ScrollBehavior` only lets touch/stylus drag a
+/// scrollable — a mouse click-and-drag does nothing on desktop unless a
+/// platform-specific widget (like a `Scrollbar`) opts it in. Horizontal
+/// rows like the Feed's tag chips have no such widget, so on Windows they
+/// were only scrollable via a wheel that mostly doesn't map to a
+/// horizontal axis. This adds mouse (and trackpad) to the drag devices
+/// app-wide instead of special-casing every scrollable.
+class _MouseDragScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+      };
 }

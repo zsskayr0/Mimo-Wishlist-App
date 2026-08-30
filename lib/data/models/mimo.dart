@@ -44,6 +44,30 @@ class Mimo {
   /// folder's own name/color replace that tag entirely.
   bool get isUnorganized => folderId == null;
 
+  /// Only the fields that get edited in place after the initial fetch
+  /// (priority/status from Detail or the table's inline pickers, notes
+  /// from Detail) — `notes` uses the nullable-clearing-function pattern
+  /// so callers can distinguish "leave it" from "clear it".
+  Mimo copyWith({String? priority, String? purchaseStatus, String? Function()? notes}) {
+    return Mimo(
+      id: id,
+      ownerId: ownerId,
+      folderId: folderId,
+      folderName: folderName,
+      folderColor: folderColor,
+      title: title,
+      notes: notes != null ? notes() : this.notes,
+      coverImageUrl: coverImageUrl,
+      originalUrl: originalUrl,
+      storeDomain: storeDomain,
+      price: price,
+      priority: priority ?? this.priority,
+      purchaseStatus: purchaseStatus ?? this.purchaseStatus,
+      createdAt: createdAt,
+      tags: tags,
+    );
+  }
+
   factory Mimo.fromJson(Map<String, dynamic> json) {
     final folder = json['folders'] as Map<String, dynamic>?;
     final tagRows = json['mimo_tags'] as List?;

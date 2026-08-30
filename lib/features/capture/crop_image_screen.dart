@@ -5,14 +5,20 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/mimo_colors.dart';
 
-/// Locked to 1:1 — the blueprint's "recorte automático (crop 1x1) do
-/// produto identificado" rule. This is the manual stand-in for that until
-/// there's a real vision model suggesting the crop; the aspect ratio rule
-/// itself already holds today.
+/// A 1:1 crop screen. No longer used for mimo covers (those keep their
+/// original aspect ratio — see MimoCard's doc comment for why); square
+/// still makes sense for a profile photo, since avatars are always shown
+/// circular regardless of any view-mode setting.
 class CropImageScreen extends StatefulWidget {
-  const CropImageScreen({super.key, required this.imageBytes});
+  const CropImageScreen({super.key, required this.imageBytes, this.title = 'Recortar imagem', this.circular = false});
 
   final Uint8List imageBytes;
+  final String title;
+
+  /// Shows the crop mask as a circle instead of a square — purely a
+  /// preview aid for avatars; the cropped bytes are still a square image
+  /// either way (the app renders avatars circular itself via ClipOval).
+  final bool circular;
 
   @override
   State<CropImageScreen> createState() => _CropImageScreenState();
@@ -50,7 +56,7 @@ class _CropImageScreenState extends State<CropImageScreen> {
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('Recortar capa'),
+        title: Text(widget.title),
         actions: [
           TextButton(
             onPressed: _isCropping ? null : _confirm,
@@ -68,7 +74,7 @@ class _CropImageScreenState extends State<CropImageScreen> {
         controller: _controller,
         image: widget.imageBytes,
         aspectRatio: 1,
-        withCircleUi: false,
+        withCircleUi: widget.circular,
         baseColor: Colors.black,
         maskColor: Colors.black.withValues(alpha: 0.65),
         onCropped: _onCropped,

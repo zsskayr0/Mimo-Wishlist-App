@@ -23,11 +23,15 @@ class UserRepository {
     required String userId,
     required String username,
     String? displayName,
+    String? avatarUrl,
+    String? bio,
   }) async {
     try {
       await _client.from('users').update({
         'username': username.trim().toLowerCase(),
         'display_name': (displayName == null || displayName.trim().isEmpty) ? null : displayName.trim(),
+        'avatar_url': avatarUrl,
+        'bio': (bio == null || bio.trim().isEmpty) ? null : bio.trim(),
       }).eq('id', userId);
     } on PostgrestException catch (e) {
       if (e.code == '23505') throw UsernameAlreadyTakenException(); // unique_violation

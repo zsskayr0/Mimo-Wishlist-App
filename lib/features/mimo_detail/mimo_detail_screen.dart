@@ -64,12 +64,12 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
   }
 
   Future<void> _setPriority(String priority) async {
-    setState(() => _mimo = _copyWith(priority: priority));
+    setState(() => _mimo = _mimo.copyWith(priority: priority));
     await _mimoRepository.updatePriority(_mimo.id, priority);
   }
 
   Future<void> _setStatus(String status) async {
-    setState(() => _mimo = _copyWith(purchaseStatus: status));
+    setState(() => _mimo = _mimo.copyWith(purchaseStatus: status));
     await _mimoRepository.updatePurchaseStatus(_mimo.id, status);
   }
 
@@ -79,28 +79,10 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
       final trimmed = value.trim();
       final notes = trimmed.isEmpty ? null : trimmed;
       if (notes == _mimo.notes) return;
-      setState(() => _mimo = _copyWith(notes: () => notes));
+      setState(() => _mimo = _mimo.copyWith(notes: () => notes));
       await _mimoRepository.updateNotes(_mimo.id, notes);
     });
   }
-
-  Mimo _copyWith({String? priority, String? purchaseStatus, String? Function()? notes}) => Mimo(
-        id: _mimo.id,
-        ownerId: _mimo.ownerId,
-        title: _mimo.title,
-        priority: priority ?? _mimo.priority,
-        purchaseStatus: purchaseStatus ?? _mimo.purchaseStatus,
-        createdAt: _mimo.createdAt,
-        folderId: _mimo.folderId,
-        folderName: _mimo.folderName,
-        folderColor: _mimo.folderColor,
-        notes: notes != null ? notes() : _mimo.notes,
-        coverImageUrl: _mimo.coverImageUrl,
-        originalUrl: _mimo.originalUrl,
-        storeDomain: _mimo.storeDomain,
-        tags: _mimo.tags,
-        price: _mimo.price,
-      );
 
   Future<void> _openStore() async {
     final url = _mimo.originalUrl;

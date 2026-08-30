@@ -10,6 +10,7 @@ import '../../core/theme/theme_controller.dart';
 import '../../data/models/user_profile.dart';
 import '../../data/repositories/user_repository.dart';
 import '../profile/edit_profile_sheet.dart';
+import 'view_mode_screens.dart';
 
 const _repoUrl = 'https://github.com/zsskayr0/Mimo-Wishlist-App';
 
@@ -25,19 +26,25 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late Future<UserProfile> _profileFuture;
+  UserProfile? _profile;
 
   @override
   void initState() {
     super.initState();
-    _profileFuture = UserRepository().fetchMe();
+    _loadProfile();
   }
 
-  void _reload() => setState(() => _profileFuture = UserRepository().fetchMe());
+  Future<void> _loadProfile() async {
+    final profile = await UserRepository().fetchMe();
+    if (mounted) setState(() => _profile = profile);
+  }
 
   Future<void> _editProfile(UserProfile profile) async {
+    // EditProfileSheet already hands back the saved profile — no need
+    // for a second round-trip (and no risk of it flashing back to the
+    // loading state in between).
     final updated = await EditProfileSheet.show(context, profile: profile);
-    if (updated != null) _reload();
+    if (updated != null && mounted) setState(() => _profile = updated);
   }
 
   void _comingSoon() {
@@ -81,19 +88,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               const Text('Configurações', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
-              FutureBuilder<UserProfile>(
-                future: _profileFuture,
-                builder: (context, snapshot) {
-                  final profile = snapshot.data;
+              Builder(
+                builder: (context) {
+                  final profile = _profile;
                   final email = Supabase.instance.client.auth.currentUser?.email;
                   return _Group(
                     children: [
                       _Row(
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(color: colors.placeholder, shape: BoxShape.circle),
-                          child: Icon(Icons.person_outline, size: 18, color: colors.inkFaint),
+                        leading: ClipOval(
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            color: colors.placeholder,
+                            alignment: Alignment.center,
+                            child: profile?.avatarUrl == null
+                                ? Icon(Icons.person_outline, size: 18, color: colors.inkFaint)
+                                : Image.network(profile!.avatarUrl!, fit: BoxFit.cover, width: 40, height: 40),
+                          ),
                         ),
                         title: profile == null ? '—' : (profile.displayName ?? '@${profile.username}'),
                         subtitle: profile == null
@@ -169,67 +180,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 10),
               _Group(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            _IconSquare(icon: Icons.smartphone_outlined),
-                            const SizedBox(width: 12),
-                            const Text('No celular', style: TextStyle(fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        ValueListenableBuilder<MobileMimoView>(
-                          valueListenable: ViewModeController.instance.mobileMode,
-                          builder: (context, mode, _) => Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              for (final option in MobileMimoView.values)
-                                _ViewModeChip(
-                                  label: option.label,
-                                  selected: option == mode,
-                                  onTap: () => ViewModeController.instance.setMobileMode(option),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
+                  ValueListenableBuilder<MobileMimoView>(
+                    valueListenable: ViewModeController.instance.mobileMode,
+                    builder: (context, mode, _) => _Row(
+                      leading: _IconSquare(icon: Icons.smartphone_outlined),
+                      title: 'No celular',
+                      subtitle: mode.label,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const MobileViewModeScreen()),
+                      ),
                     ),
                   ),
                   _Divider(colors: colors),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            _IconSquare(icon: Icons.desktop_windows_outlined),
-                            const SizedBox(width: 12),
-                            const Text('No desktop', style: TextStyle(fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        ValueListenableBuilder<DesktopMimoView>(
-                          valueListenable: ViewModeController.instance.desktopMode,
-                          builder: (context, mode, _) => Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              for (final option in DesktopMimoView.values)
-                                _ViewModeChip(
-                                  label: option.label,
-                                  selected: option == mode,
-                                  onTap: () => ViewModeController.instance.setDesktopMode(option),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
+                  ValueListenableBuilder<DesktopMimoView>(
+                    valueListenable: ViewModeController.instance.desktopMode,
+                    builder: (context, mode, _) => _Row(
+                      leading: _IconSquare(icon: Icons.desktop_windows_outlined),
+                      title: 'No desktop',
+                      subtitle: mode.label,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const DesktopViewModeScreen()),
+                      ),
                     ),
                   ),
                 ],
@@ -416,34 +387,6 @@ class _Row extends StatelessWidget {
   }
 }
 
-class _ViewModeChip extends StatelessWidget {
-  const _ViewModeChip({required this.label, required this.selected, required this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = MimoColors.of(context);
-    return InkWell(
-      borderRadius: BorderRadius.circular(999),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? colors.ink : Colors.transparent,
-          border: Border.all(color: selected ? colors.ink : colors.border, width: 1.5),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: selected ? colors.bg : colors.ink),
-        ),
-      ),
-    );
-  }
-}
 
 class _ThemeSegment extends StatelessWidget {
   const _ThemeSegment({required this.current, required this.onChanged});

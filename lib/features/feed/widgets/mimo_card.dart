@@ -3,21 +3,20 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/mimo_colors.dart';
 import '../../../data/models/mimo.dart';
 
-/// One masonry-grid card (see FeedScreen/FolderDetailScreen's
-/// `MasonryGridView.extent`). The Desorganizado/Pasta pill is mutually
-/// exclusive by construction — it reads straight off [Mimo.isUnorganized],
-/// never both.
+/// One masonry-grid card (see `MimoCollectionView`'s grid modes). The
+/// Desorganizado/Pasta pill is mutually exclusive by construction — it
+/// reads straight off [Mimo.isUnorganized], never both.
 ///
-/// The cover is a true 1:1 `AspectRatio` by default — mimo covers are meant
-/// to be square (the blueprint's "recorte 1x1" rule; see the real crop step
-/// in the capture sheet) — unless [dynamicCover] is on, the Feed's
-/// "cards adapt to the image" toggle, which lets each cover keep its own
-/// natural proportions instead. Everything below the cover sizes to its own
-/// content (`mainAxisSize.min`), never to a fixed cell height — a plain
-/// `GridView` forces every cell to the same `childAspectRatio`, which left
-/// a gap of blank space under the pill on any card shorter than the
-/// tallest one on screen; the masonry grid lets each card be exactly as
-/// tall as it needs to be.
+/// Covers are stored at their original aspect ratio — nothing crops them
+/// on the way in. [dynamicCover] decides how they're *displayed*: off
+/// (Grid quadrado) forces a true 1:1 `AspectRatio` + `BoxFit.cover`, a
+/// purely visual crop; on (Grid dinâmico) lets each cover keep its own
+/// natural proportions instead. Everything below the cover sizes to its
+/// own content (`mainAxisSize.min`), never to a fixed cell height — a
+/// plain `GridView` forces every cell to the same `childAspectRatio`,
+/// which left a gap of blank space under the pill on any card shorter
+/// than the tallest one on screen; the masonry grid lets each card be
+/// exactly as tall as it needs to be.
 class MimoCard extends StatelessWidget {
   const MimoCard({super.key, required this.mimo, this.onTap, this.dynamicCover = false});
 

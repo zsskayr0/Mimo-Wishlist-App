@@ -5,6 +5,7 @@ class UserProfile {
     required this.username,
     this.displayName,
     this.avatarUrl,
+    this.bio,
   });
 
   final String id;
@@ -12,11 +13,15 @@ class UserProfile {
   final String? displayName;
   final String? avatarUrl;
 
+  /// Up to 50 characters, shown under the username on Perfil.
+  final String? bio;
+
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
         id: json['id'] as String,
         username: json['username'] as String,
         displayName: json['display_name'] as String?,
         avatarUrl: json['avatar_url'] as String?,
+        bio: json['bio'] as String?,
       );
 }
 

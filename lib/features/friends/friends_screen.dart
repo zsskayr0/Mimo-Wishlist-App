@@ -25,16 +25,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
   List<UserProfile> _searchResults = const [];
   bool _isSearching = false;
 
-  late Future<List<FriendshipRequest>> _requestsFuture;
-  late Future<List<UserProfile>> _friendsFuture;
-  late Future<List<Folder>> _sharedFoldersFuture;
+  /// Null only before the first load ever completes — see FeedScreen for
+  /// why these are cached state instead of bare Future+FutureBuilder
+  /// (a reload used to flash all three lists back to a loading spinner).
+  List<FriendshipRequest>? _requests;
+  List<UserProfile>? _friends;
+  List<Folder>? _sharedFolders;
 
   @override
   void initState() {
     super.initState();
-    _requestsFuture = _repository.fetchIncomingRequests();
-    _friendsFuture = _repository.fetchFriends();
-    _sharedFoldersFuture = FolderRepository().fetchSharedWithMe();
+    _reloadLists();
   }
 
   @override
@@ -45,11 +46,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
     super.dispose();
   }
 
-  void _reloadLists() {
+  Future<void> _reloadLists() async {
+    final results = await Future.wait([
+      _repository.fetchIncomingRequests(),
+      _repository.fetchFriends(),
+      FolderRepository().fetchSharedWithMe(),
+    ]);
+    if (!mounted) return;
     setState(() {
-      _requestsFuture = _repository.fetchIncomingRequests();
-      _friendsFuture = _repository.fetchFriends();
-      _sharedFoldersFuture = FolderRepository().fetchSharedWithMe();
+      _requests = results[0] as List<FriendshipRequest>;
+      _friends = results[1] as List<UserProfile>;
+      _sharedFolders = results[2] as List<Folder>;
     });
   }
 
@@ -171,111 +178,79 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         ),
                       ),
                     ),
+              ] else if (_friends == null) ...[
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
               ] else ...[
                 const SizedBox(height: 22),
-                FutureBuilder<List<FriendshipRequest>>(
-                  future: _requestsFuture,
-                  builder: (context, snapshot) {
-                    final requests = snapshot.data ?? const [];
-                    if (requests.isEmpty) return const SizedBox.shrink();
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _SectionLabel('Solicitações'),
-                        const SizedBox(height: 10),
-                        for (final request in requests)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _ProfileRow(
-                              profile: request.profile,
-                              subtitle: 'quer ser sua amiga',
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  FilledButton(
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: colors.ink,
-                                      foregroundColor: colors.bg,
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                      minimumSize: Size.zero,
-                                    ),
-                                    onPressed: () => _respond(request, accept: true),
-                                    child: const Text('Aceitar', style: TextStyle(fontSize: 12.5)),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  OutlinedButton(
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: colors.ink,
-                                      side: BorderSide(color: colors.border),
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                      minimumSize: Size.zero,
-                                    ),
-                                    onPressed: () => _respond(request, accept: false),
-                                    child: const Text('Recusar', style: TextStyle(fontSize: 12.5)),
-                                  ),
-                                ],
+                if (_requests!.isNotEmpty) ...[
+                  _SectionLabel('Solicitações'),
+                  const SizedBox(height: 10),
+                  for (final request in _requests!)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _ProfileRow(
+                        profile: request.profile,
+                        subtitle: 'quer ser sua amiga',
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: colors.ink,
+                                foregroundColor: colors.bg,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                minimumSize: Size.zero,
                               ),
+                              onPressed: () => _respond(request, accept: true),
+                              child: const Text('Aceitar', style: TextStyle(fontSize: 12.5)),
                             ),
-                          ),
-                        const SizedBox(height: 12),
-                      ],
-                    );
-                  },
-                ),
-                FutureBuilder<List<Folder>>(
-                  future: _sharedFoldersFuture,
-                  builder: (context, snapshot) {
-                    final folders = snapshot.data ?? const [];
-                    if (folders.isEmpty) return const SizedBox.shrink();
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _SectionLabel('Pastas compartilhadas com você'),
-                        const SizedBox(height: 10),
-                        for (final folder in folders)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _SharedFolderRow(folder: folder, onTap: () => _openSharedFolder(folder)),
-                          ),
-                        const SizedBox(height: 12),
-                      ],
-                    );
-                  },
-                ),
-                FutureBuilder<List<UserProfile>>(
-                  future: _friendsFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-                    final friends = snapshot.data ?? const [];
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _SectionLabel('Seus amigos${friends.isEmpty ? '' : ' · ${friends.length}'}'),
-                        const SizedBox(height: 10),
-                        if (friends.isEmpty)
-                          Text(
-                            'Nenhum amigo ainda. Busque por @usuário acima.',
-                            style: TextStyle(color: colors.inkSoft),
-                          )
-                        else
-                          for (final friend in friends)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _ProfileRow(
-                                profile: friend,
-                                showChevron: true,
-                                onTap: () => _openFriendActions(friend),
+                            const SizedBox(width: 6),
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: colors.ink,
+                                side: BorderSide(color: colors.border),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                minimumSize: Size.zero,
                               ),
+                              onPressed: () => _respond(request, accept: false),
+                              child: const Text('Recusar', style: TextStyle(fontSize: 12.5)),
                             ),
-                      ],
-                    );
-                  },
-                ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                ],
+                if (_sharedFolders!.isNotEmpty) ...[
+                  _SectionLabel('Pastas compartilhadas com você'),
+                  const SizedBox(height: 10),
+                  for (final folder in _sharedFolders!)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _SharedFolderRow(folder: folder, onTap: () => _openSharedFolder(folder)),
+                    ),
+                  const SizedBox(height: 12),
+                ],
+                _SectionLabel('Seus amigos${_friends!.isEmpty ? '' : ' · ${_friends!.length}'}'),
+                const SizedBox(height: 10),
+                if (_friends!.isEmpty)
+                  Text(
+                    'Nenhum amigo ainda. Busque por @usuário acima.',
+                    style: TextStyle(color: colors.inkSoft),
+                  )
+                else
+                  for (final friend in _friends!)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _ProfileRow(
+                        profile: friend,
+                        showChevron: true,
+                        onTap: () => _openFriendActions(friend),
+                      ),
+                    ),
               ],
             ],
           ),

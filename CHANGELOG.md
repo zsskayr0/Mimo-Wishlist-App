@@ -4,6 +4,56 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.19-alpha] - 2026-08-30
+
+### Added
+- Configurações → Visualização agora abre em duas páginas dedicadas
+  (celular e desktop, cada uma com sua própria seleção persistida), não
+  mais um `Wrap` de chips na própria tela de Configurações — cada opção
+  mostra um preview animado (fade + escala com leve atraso entre os
+  blocos) do que aquele modo faz.
+- Tabela (desktop): prioridade e status de compra agora são editáveis
+  direto na linha (menu de seleção rápido), sem precisar abrir o mimo;
+  colunas ganharam mais espaço entre si.
+- Avatar de perfil e bio (até 50 caracteres, aparece abaixo do
+  @usuário) — `EditProfileSheet` ganhou um seletor de foto (recorte 1:1
+  circular) e o campo de bio; novo bucket `avatars` no Storage
+  (`007_avatar_storage.sql`).
+- Fundo verdadeiramente preto (AMOLED) na tela de autenticação — as
+  cores `authBg`/`authPanel`/`authInputBg`/`authBorder` tinham um viés
+  arroxeado (B > R > G) mesmo depois do ajuste anterior pro tema escuro
+  geral; agora são neutras.
+- Rolagem com o botão esquerdo do mouse habilitada em todo o app
+  (`ScrollBehavior` global) — as linhas horizontais de chip (tags no
+  Feed) só respondiam a toque, não a arrastar com o mouse no desktop.
+
+### Changed
+- Corrigida uma falha de planejamento: o recorte 1x1 deixou de ser
+  aplicado (destrutivamente) no momento da captura — a imagem agora é
+  guardada na proporção original, e o recorte quadrado é só uma escolha
+  de exibição (`MimoCard.dynamicCover`, o modo "Grid quadrado"). Antes,
+  toda capa já chegava cortada quadrada no Storage, então o "Grid
+  dinâmico" ficava idêntico ao quadrado — não tinha mais nada "dinâmico"
+  pra mostrar.
+- Seletor de pasta (`FolderPickerSheet`) ganhou busca (a partir de 5
+  pastas) e "Criar nova pasta" direto no fluxo, sem precisar sair da
+  captura/edição pra criar a pasta antes.
+- Removido o modo "Grid 4 colunas" no celular — ficava pequeno demais
+  pra ser útil.
+- Barra de tags do Feed: no desktop, quebra em várias linhas até a borda
+  da tela em vez de rolar horizontalmente; no celular continua rolando.
+- Desktop (Feed e Pasta) usa a largura total da tela agora, com só um
+  padding lateral — antes ficava travado numa coluna central de 1100px,
+  sobrando bastante espaço vazio dos dois lados numa tela larga.
+
+### Fixed
+- Flicker ao voltar de qualquer tela (Detalhe, editar perfil, aceitar
+  amizade...): o Feed, a Pasta, Perfil, Configurações, Amigos e Pastas
+  usavam `FutureBuilder` puro, que reseta pro estado de carregamento
+  assim que o Future é trocado — a lista inteira sumia e reaparecia por
+  uma fração de segundo. Trocado por um padrão de estado em cache que só
+  troca os dados quando os novos já estão prontos, nunca limpa antes.
+
 ## [0.0.18-alpha] - 2026-08-30
 
 ### Fixed

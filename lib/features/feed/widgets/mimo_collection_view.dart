@@ -31,6 +31,16 @@ Color _statusColor(MimoColors colors, String status) => switch (status) {
       _ => colors.tagGold,
     };
 
+// Shared between the table's header and body rows so their columns stay
+// aligned.
+const _tableColumnGap = SizedBox(width: 18);
+const _tableTitleFlex = 4;
+const _tablePriceFlex = 2;
+const _tableFolderFlex = 2;
+const _tableTagsFlex = 3;
+const _tablePriorityFlex = 2;
+const _tableStatusFlex = 2;
+
 /// Renders a mimo list per the view mode picked in Settings →
 /// Visualização (mobile and desktop have their own, independent choice —
 /// see `ViewModeController`). Handles scrolling itself (a `ListView` or
@@ -43,12 +53,21 @@ class MimoCollectionView extends StatelessWidget {
     required this.onTap,
     required this.isDesktop,
     this.padding = EdgeInsets.zero,
+    this.onPriorityChanged,
+    this.onStatusChanged,
   });
 
   final List<Mimo> mimos;
   final ValueChanged<Mimo> onTap;
   final bool isDesktop;
   final EdgeInsetsGeometry padding;
+
+  /// Table mode only — lets priority/status be edited straight from the
+  /// row instead of having to open the mimo first. Null in every other
+  /// mode (list/grid rows don't have room for it, and the whole card is
+  /// already just a shortcut to the same editors in Detail).
+  final void Function(Mimo mimo, String priority)? onPriorityChanged;
+  final void Function(Mimo mimo, String status)? onStatusChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +79,13 @@ class MimoCollectionView extends StatelessWidget {
             DesktopMimoView.list => _MimoListView(mimos: mimos, onTap: onTap, detailed: false, padding: padding),
             DesktopMimoView.detailedList =>
               _MimoListView(mimos: mimos, onTap: onTap, detailed: true, padding: padding),
-            DesktopMimoView.table => _MimoTableView(mimos: mimos, onTap: onTap, padding: padding),
+            DesktopMimoView.table => _MimoTableView(
+                mimos: mimos,
+                onTap: onTap,
+                padding: padding,
+                onPriorityChanged: onPriorityChanged,
+                onStatusChanged: onStatusChanged,
+              ),
             DesktopMimoView.dynamicGrid =>
               _MimoGridView(mimos: mimos, onTap: onTap, dynamicCover: true, padding: padding),
           };
@@ -75,7 +100,6 @@ class MimoCollectionView extends StatelessWidget {
           MobileMimoView.detailedList => _MimoListView(mimos: mimos, onTap: onTap, detailed: true, padding: padding),
           MobileMimoView.grid2 => _MimoGridView(mimos: mimos, onTap: onTap, crossAxisCount: 2, padding: padding),
           MobileMimoView.grid3 => _MimoGridView(mimos: mimos, onTap: onTap, crossAxisCount: 3, padding: padding),
-          MobileMimoView.grid4 => _MimoGridView(mimos: mimos, onTap: onTap, crossAxisCount: 4, padding: padding),
         };
       },
     );
@@ -248,18 +272,19 @@ class _MimoListTile extends StatelessWidget {
 /// cells, and the default hover highlight `InkWell` already gives for
 /// free when a mouse is present.
 class _MimoTableView extends StatelessWidget {
-  const _MimoTableView({required this.mimos, required this.onTap, required this.padding});
+  const _MimoTableView({
+    required this.mimos,
+    required this.onTap,
+    required this.padding,
+    this.onPriorityChanged,
+    this.onStatusChanged,
+  });
 
   final List<Mimo> mimos;
   final ValueChanged<Mimo> onTap;
   final EdgeInsetsGeometry padding;
-
-  static const _titleFlex = 4;
-  static const _priceFlex = 2;
-  static const _folderFlex = 2;
-  static const _tagsFlex = 3;
-  static const _priorityFlex = 2;
-  static const _statusFlex = 2;
+  final void Function(Mimo mimo, String priority)? onPriorityChanged;
+  final void Function(Mimo mimo, String status)? onStatusChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -281,7 +306,13 @@ class _MimoTableView extends StatelessWidget {
               child: ListView.separated(
                 itemCount: mimos.length,
                 separatorBuilder: (_, _) => Divider(height: 1, color: colors.border),
-                itemBuilder: (context, index) => _bodyRow(context, colors, mimos[index]),
+                itemBuilder: (context, index) => _TableRow(
+                  mimo: mimos[index],
+                  colors: colors,
+                  onTap: () => onTap(mimos[index]),
+                  onPriorityChanged: onPriorityChanged == null ? null : (p) => onPriorityChanged!(mimos[index], p),
+                  onStatusChanged: onStatusChanged == null ? null : (s) => onStatusChanged!(mimos[index], s),
+                ),
               ),
             ),
           ],
@@ -303,22 +334,44 @@ class _MimoTableView extends StatelessWidget {
       child: Row(
         children: [
           const SizedBox(width: 34), // cover column
-          const SizedBox(width: 12),
-          label('TÍTULO', _titleFlex),
-          label('PREÇO', _priceFlex),
-          label('PASTA', _folderFlex),
-          label('TAGS', _tagsFlex),
-          label('PRIORIDADE', _priorityFlex),
-          label('STATUS', _statusFlex),
+          _tableColumnGap,
+          label('TÍTULO', _tableTitleFlex),
+          _tableColumnGap,
+          label('PREÇO', _tablePriceFlex),
+          _tableColumnGap,
+          label('PASTA', _tableFolderFlex),
+          _tableColumnGap,
+          label('TAGS', _tableTagsFlex),
+          _tableColumnGap,
+          label('PRIORIDADE', _tablePriorityFlex),
+          _tableColumnGap,
+          label('STATUS', _tableStatusFlex),
         ],
       ),
     );
   }
+}
 
-  Widget _bodyRow(BuildContext context, MimoColors colors, Mimo mimo) {
+class _TableRow extends StatelessWidget {
+  const _TableRow({
+    required this.mimo,
+    required this.colors,
+    required this.onTap,
+    this.onPriorityChanged,
+    this.onStatusChanged,
+  });
+
+  final Mimo mimo;
+  final MimoColors colors;
+  final VoidCallback onTap;
+  final ValueChanged<String>? onPriorityChanged;
+  final ValueChanged<String>? onStatusChanged;
+
+  @override
+  Widget build(BuildContext context) {
     final folderColor = mimo.folderColor == null ? colors.tagGold : _colorFromHex(mimo.folderColor!);
     return InkWell(
-      onTap: () => onTap(mimo),
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
         child: Row(
@@ -333,9 +386,9 @@ class _MimoTableView extends StatelessWidget {
                     : Image.network(mimo.coverImageUrl!, fit: BoxFit.cover),
               ),
             ),
-            const SizedBox(width: 12),
+            _tableColumnGap,
             Expanded(
-              flex: _titleFlex,
+              flex: _tableTitleFlex,
               child: Text(
                 mimo.title,
                 maxLines: 1,
@@ -343,15 +396,17 @@ class _MimoTableView extends StatelessWidget {
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ),
+            _tableColumnGap,
             Expanded(
-              flex: _priceFlex,
+              flex: _tablePriceFlex,
               child: Text(
                 mimo.price == null ? '—' : _formatPrice(mimo.price!),
                 style: TextStyle(fontSize: 12.5, color: colors.inkSoft, fontWeight: FontWeight.w600),
               ),
             ),
+            _tableColumnGap,
             Expanded(
-              flex: _folderFlex,
+              flex: _tableFolderFlex,
               child: _Pill(
                 label: mimo.isUnorganized ? 'Desorganizado' : (mimo.folderName ?? '—'),
                 color: mimo.isUnorganized ? colors.tagGray : folderColor,
@@ -359,8 +414,9 @@ class _MimoTableView extends StatelessWidget {
                 compact: true,
               ),
             ),
+            _tableColumnGap,
             Expanded(
-              flex: _tagsFlex,
+              flex: _tableTagsFlex,
               child: mimo.tags.isEmpty
                   ? Text('—', style: TextStyle(fontSize: 12, color: colors.inkFaint))
                   : Wrap(
@@ -374,27 +430,83 @@ class _MimoTableView extends StatelessWidget {
                       ],
                     ),
             ),
+            _tableColumnGap,
             Expanded(
-              flex: _priorityFlex,
-              child: _Pill(
+              flex: _tablePriorityFlex,
+              child: _EditablePill(
                 label: _priorityLabels[mimo.priority] ?? mimo.priority,
                 color: _priorityColor(colors, mimo.priority),
                 background: _priorityColor(colors, mimo.priority).withValues(alpha: 0.14),
-                compact: true,
+                options: _priorityLabels,
+                current: mimo.priority,
+                onChanged: onPriorityChanged,
               ),
             ),
+            _tableColumnGap,
             Expanded(
-              flex: _statusFlex,
-              child: _Pill(
+              flex: _tableStatusFlex,
+              child: _EditablePill(
                 label: _statusLabels[mimo.purchaseStatus] ?? mimo.purchaseStatus,
                 color: _statusColor(colors, mimo.purchaseStatus),
                 background: _statusColor(colors, mimo.purchaseStatus).withValues(alpha: 0.14),
-                compact: true,
+                options: _statusLabels,
+                current: mimo.purchaseStatus,
+                onChanged: onStatusChanged,
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A pill that, given an [onChanged] callback, opens a small menu of
+/// [options] right there in the table — no need to open the mimo just to
+/// flip its priority or status.
+class _EditablePill extends StatelessWidget {
+  const _EditablePill({
+    required this.label,
+    required this.color,
+    required this.background,
+    required this.options,
+    required this.current,
+    required this.onChanged,
+  });
+
+  final String label;
+  final Color color;
+  final Color background;
+  final Map<String, String> options;
+  final String current;
+  final ValueChanged<String>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final pill = _Pill(label: label, color: color, background: background, compact: true);
+    if (onChanged == null) return pill;
+
+    return PopupMenuButton<String>(
+      tooltip: '',
+      padding: EdgeInsets.zero,
+      offset: const Offset(0, 28),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: onChanged,
+      itemBuilder: (context) => [
+        for (final entry in options.entries)
+          PopupMenuItem(
+            value: entry.key,
+            child: Row(
+              children: [
+                if (entry.key == current) Icon(Icons.check, size: 16, color: MimoColors.gradientA),
+                if (entry.key != current) const SizedBox(width: 16),
+                const SizedBox(width: 8),
+                Text(entry.value),
+              ],
+            ),
+          ),
+      ],
+      child: pill,
     );
   }
 }
