@@ -542,13 +542,19 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
 
     if (widget.isDesktop) {
       // showFloatingDialog already centers this and handles tap-outside —
-      // just the sized card itself here, no Dialog/Center of our own.
+      // just the sized card itself here. A real `Material` ancestor (not
+      // just a decorated Container) — Flutter's own `Dialog` widget used
+      // to supply this for free before showFloatingDialog replaced it;
+      // without it every InkWell/Ink inside (GradientButton, the tag/
+      // folder rows...) throws "No Material widget found" the moment it
+      // builds.
       return SizedBox(
         width: 480,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.86),
-          child: Container(
-            decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(20)),
+          child: Material(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(20),
             clipBehavior: Clip.antiAlias,
             child: form,
           ),

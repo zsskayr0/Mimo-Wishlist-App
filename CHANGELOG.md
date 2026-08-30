@@ -4,6 +4,17 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.18-alpha] - 2026-08-30
+
+### Fixed
+- Regressão séria da v0.0.16-alpha: trocar o `Dialog` do Flutter pelo
+  `showFloatingDialog` (fix do "fecha ao tocar fora") removeu, sem
+  querer, o ancestral `Material` que o `Dialog` fornecia de graça —
+  qualquer `InkWell`/`Ink` dentro (botões, chips, o `GradientButton`)
+  quebrava com "No Material widget found" assim que renderizava.
+  `MimoDetailScreen` já tinha o próprio `Material`; `QuickCaptureSheet` e
+  `MimoFilterSheet` agora também têm.
+
 ## [0.0.17-alpha] - 2026-08-30
 
 ### Added

@@ -387,13 +387,17 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
 
     if (widget.isDesktop) {
       // showFloatingDialog already centers this and handles tap-outside.
+      // A real `Material` ancestor (not just a decorated Container) — see
+      // QuickCaptureSheet's desktop branch for why this matters: every
+      // InkWell inside (the _Choice chips) needs one or throws "No
+      // Material widget found" the moment it builds.
       return ConstrainedBox(
         constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.86),
-        child: Container(
-          width: 680,
-          decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(20)),
+        child: Material(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(20),
           clipBehavior: Clip.antiAlias,
-          child: content,
+          child: SizedBox(width: 680, child: content),
         ),
       );
     }
