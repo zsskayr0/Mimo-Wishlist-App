@@ -4,6 +4,30 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.21-alpha] - 2026-08-30
+
+### Added
+- Tabela: coluna LINK (domínio da loja, largura fixa, abre o link ao
+  tocar) à direita do título; linha em branco no fim pra criar um mimo
+  digitando o título ali mesmo, sem abrir o sheet de captura.
+- Preview do modo de visualização: corrigido overflow real (5px) no
+  mockup da Tabela — margens internas apertadas demais pra caber na
+  caixinha do preview.
+
+### Changed
+- Tabela: só a foto do item abre o Detalhe agora — o resto da linha
+  (título, link, preço, pasta, tags) não faz mais nada ao tocar, e
+  prioridade/status continuam editáveis ali mesmo. Também perdeu a
+  moldura de card (borda + cantos arredondados + clip) que dava a
+  impressão de ser uma caixa separada da página; agora é só a lista de
+  linhas rolando na própria página, sem cortar a última linha.
+- Barra de tags do Feed no desktop: reescrita pra realmente fazer o que
+  foi pedido — flui até a borda da tela, quebra pra uma segunda linha se
+  precisar, e qualquer tag que ainda sobre depois dessas duas linhas
+  simplesmente não aparece ali (continua alcançável via busca ou
+  Filtros). A versão anterior (Wrap com scroll) não tinha esse
+  comportamento e renderizava estranho.
+
 ## [0.0.20-alpha] - 2026-08-30
 
 ### Fixed

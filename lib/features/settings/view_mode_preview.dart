@@ -80,7 +80,7 @@ class _ViewModePreviewState extends State<ViewModePreview> with SingleTickerProv
     final colors = MimoColors.of(context);
     return Container(
       width: 116,
-      height: 74,
+      height: 80,
       padding: const EdgeInsets.all(9),
       decoration: BoxDecoration(
         color: colors.bg,
@@ -180,19 +180,20 @@ class _ViewModePreviewState extends State<ViewModePreview> with SingleTickerProv
   Widget _tablePreview(MimoColors colors) {
     const rowCount = 3;
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         _piece(0, rowCount + 1, child: Row(children: [_bar(colors, width: 20), const Spacer(), _bar(colors, width: 20)])),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Divider(height: 1, color: colors.border),
-        const SizedBox(height: 5),
+        const SizedBox(height: 4),
         for (var i = 0; i < rowCount; i++) ...[
-          if (i > 0) const SizedBox(height: 6),
+          if (i > 0) const SizedBox(height: 4),
           _piece(
             i + 1,
             rowCount + 1,
             child: Row(
               children: [
-                _block(colors, width: 10, height: 10),
+                _block(colors, width: 8, height: 8),
                 const SizedBox(width: 6),
                 Expanded(child: _bar(colors, color: MimoColors.gradientA.withValues(alpha: 0.45))),
                 const SizedBox(width: 6),

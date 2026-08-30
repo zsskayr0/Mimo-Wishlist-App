@@ -100,6 +100,24 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     });
   }
 
+  /// Table mode's blank row — see FeedScreen; here the new mimo also
+  /// gets filed straight into this folder.
+  Future<void> _createInline(String title) async {
+    try {
+      final id = await MimoRepository().createMimo(title: title, folderId: widget.folder.id);
+      final created = await MimoRepository().fetchById(id);
+      if (created != null && mounted) {
+        setState(() => _mimos = [...?_mimos, created]);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não deu pra criar o mimo. Tenta de novo.')),
+        );
+      }
+    }
+  }
+
   void _onPriorityChanged(Mimo mimo, String priority) {
     _updateMimo(mimo, (m) => m.copyWith(priority: priority));
     MimoRepository().updatePriority(mimo.id, priority);
@@ -282,6 +300,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
       onPriorityChanged: _onPriorityChanged,
       onStatusChanged: _onStatusChanged,
+      onCreateInline: _createInline,
     );
   }
 }

@@ -102,6 +102,23 @@ class _FeedScreenState extends State<FeedScreen> {
     _repository.updatePriority(mimo.id, priority);
   }
 
+  /// Table mode's blank row — "criar por lá mesmo", no capture sheet.
+  Future<void> _createInline(String title) async {
+    try {
+      final id = await _repository.createMimo(title: title);
+      final created = await _repository.fetchById(id);
+      if (created != null && mounted) {
+        setState(() => _mimos = [...?_mimos, created]);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não deu pra criar o mimo. Tenta de novo.')),
+        );
+      }
+    }
+  }
+
   void _onStatusChanged(Mimo mimo, String status) {
     _updateMimo(mimo, (m) => m.copyWith(purchaseStatus: status));
     _repository.updatePurchaseStatus(mimo.id, status);
@@ -206,39 +223,44 @@ class _FeedScreenState extends State<FeedScreen> {
             future: _tagsFuture,
             builder: (context, snapshot) {
               final tags = snapshot.data ?? const [];
-              final chips = <Widget>[
-                _FilterChip(label: 'Pastas', icon: Icons.folder_outlined, onTap: _openFolders),
-                SizedBox(height: 20, width: 1, child: ColoredBox(color: colors.border)),
-                _FilterChip(
-                  label: _filters.hasActiveFilters ? 'Filtros (${_filters.activeCount})' : 'Filtros',
-                  icon: Icons.tune,
-                  selected: _filters.hasActiveFilters,
-                  onTap: _openFilterSheet,
+              final items = <(Widget, double)>[
+                (
+                  _FilterChip(label: 'Pastas', icon: Icons.folder_outlined, onTap: _openFolders),
+                  _chipWidth('Pastas', hasIcon: true),
+                ),
+                (SizedBox(height: 20, width: 1, child: ColoredBox(color: colors.border)), 1),
+                (
+                  _FilterChip(
+                    label: _filters.hasActiveFilters ? 'Filtros (${_filters.activeCount})' : 'Filtros',
+                    icon: Icons.tune,
+                    selected: _filters.hasActiveFilters,
+                    onTap: _openFilterSheet,
+                  ),
+                  _chipWidth(_filters.hasActiveFilters ? 'Filtros (${_filters.activeCount})' : 'Filtros', hasIcon: true),
                 ),
                 for (final tag in tags)
-                  _FilterChip(
-                    label: '#${tag.name}',
-                    selected: _filters.tagIds.contains(tag.id),
-                    onTap: () => _toggleTagFilter(tag.id),
+                  (
+                    _FilterChip(
+                      label: '#${tag.name}',
+                      selected: _filters.tagIds.contains(tag.id),
+                      onTap: () => _toggleTagFilter(tag.id),
+                    ),
+                    _chipWidth('#${tag.name}'),
                   ),
               ];
-              // Desktop has the width to spare: wrap to as many rows as
-              // needed instead of a single row you have to scroll. Capped
-              // and internally scrollable, not left to grow freely — with
-              // enough tags this is a fixed-height row inside a Column
-              // that also has to fit an Expanded grid below it, and an
-              // unbounded Wrap here can genuinely push that grid into a
-              // real "RenderFlex overflowed" (this isn't hypothetical: it
-              // happened with ~10 tags on a ~650px-tall window). Mobile
-              // keeps the horizontal-scroll row (draggable — see
-              // main.dart's app-wide mouse-drag ScrollBehavior).
+              // Desktop has the width to spare: flows left to right until
+              // it hits the edge, wraps to a second row, and — this is the
+              // part a plain Wrap can't do on its own — anything past
+              // that second row is dropped rather than pushing the grid
+              // below into overflow or silently requiring a scroll no one
+              // would think to try; those tags stay reachable through
+              // search or Filtros. Mobile keeps the horizontal-scroll row
+              // (draggable — see main.dart's app-wide mouse-drag
+              // ScrollBehavior).
               if (isDesktop) {
-                return ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 86),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Wrap(spacing: 8, runSpacing: 8, children: chips),
-                  ),
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _TwoRowChipWrap(items: items),
                 );
               }
               return SizedBox(
@@ -246,9 +268,9 @@ class _FeedScreenState extends State<FeedScreen> {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: chips.length,
+                  itemCount: items.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) => chips[index],
+                  itemBuilder: (context, index) => items[index].$1,
                 ),
               );
             },
@@ -300,7 +322,58 @@ class _FeedScreenState extends State<FeedScreen> {
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
         onPriorityChanged: _onPriorityChanged,
         onStatusChanged: _onStatusChanged,
+        onCreateInline: _createInline,
       ),
+    );
+  }
+}
+
+/// Rough rendered width of a `_FilterChip` with this label — good enough
+/// for "how many of these fit before wrapping", not meant to be exact.
+double _chipWidth(String label, {bool hasIcon = false}) {
+  final painter = TextPainter(
+    text: TextSpan(text: label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+    textDirection: TextDirection.ltr,
+  )..layout();
+  var width = painter.width + 28; // horizontal padding, 14 each side
+  if (hasIcon) width += 20; // icon (14) + gap (6)
+  return width;
+}
+
+/// Lays [items] out left to right, wrapping once the row runs out of
+/// width — same idea as `Wrap` — but stops after two rows instead of
+/// letting a third (or a tenth) push whatever's below it into overflow.
+/// Whatever doesn't fit in those two rows is simply not shown; it's
+/// still reachable through search or Filtros.
+class _TwoRowChipWrap extends StatelessWidget {
+  const _TwoRowChipWrap({required this.items});
+
+  final List<(Widget, double)> items;
+
+  static const _spacing = 8.0;
+  static const _maxRows = 2;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final visible = <Widget>[];
+        var rowWidth = 0.0;
+        var row = 1;
+        for (final (child, width) in items) {
+          final needed = rowWidth == 0 ? width : rowWidth + _spacing + width;
+          if (needed > maxWidth) {
+            row++;
+            if (row > _maxRows) break;
+            rowWidth = width;
+          } else {
+            rowWidth = needed;
+          }
+          visible.add(child);
+        }
+        return Wrap(spacing: _spacing, runSpacing: _spacing, children: visible);
+      },
     );
   }
 }
