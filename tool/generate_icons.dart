@@ -68,9 +68,10 @@ Future<void> _flattened(int size) async {
   // The official app-icon SVG draws the mark edge-to-edge in its 64-unit
   // box; on a real device (plus Android's own further masking/rounding on
   // top) that reads as too tightly cropped. Scale it down and recenter
-  // for more breathing room — background stays full-bleed.
+  // for more breathing room — background stays full-bleed. (0.8 wasn't
+  // enough per real-device feedback; went smaller.)
   canvas.translate(32, 32);
-  canvas.scale(0.8);
+  canvas.scale(0.62);
   canvas.translate(-32, -32);
   canvas.drawPath(_markPath(), ui.Paint()..color = const ui.Color(0xFFFFFFFF));
   canvas.drawPath(_holeCircle(), ui.Paint()..color = const ui.Color(0xFFE0619A));

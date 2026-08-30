@@ -4,6 +4,13 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.26-alpha] - 2026-08-30
+
+### Changed
+- Ícone do app menor e verificadamente centralizado (0.8x ainda ficava
+  grande demais na tela real — foi pra 0.62x; conferido escaneando os
+  pixels da marca em vez de só olhar a miniatura).
+
 ## [0.0.25-alpha] - 2026-08-30
 
 ### Added
