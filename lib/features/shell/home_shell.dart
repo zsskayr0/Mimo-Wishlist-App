@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
+import '../../core/widgets/mimo_mark.dart';
 import '../capture/quick_capture_sheet.dart';
 import '../feed/feed_screen.dart';
 import '../friends/friends_screen.dart';
@@ -24,9 +25,13 @@ const _navRadius = 8.0;
 /// The app's chrome: Feed/Amigos/Perfil/Config plus the universal capture
 /// button, in two shapes picked by width (see [MimoBreakpoints]) — both
 /// floating (inset from the screen edge, blurred, rounded) rather than
-/// docked flush to it. Bumping [_feedRefreshTick] re-keys FeedScreen so it
-/// refetches after a successful capture, without reaching for a
-/// state-management package for one signal.
+/// docked flush to it. On mobile the tabs live in a `PageView` so they're
+/// swipeable (Instagram-style) as well as tap-able; each tab is wrapped in
+/// [_KeepAlive] so swiping away and back doesn't lose scroll position or
+/// force a reload — the same guarantee `IndexedStack` gave on desktop.
+/// Bumping [_feedRefreshTick] re-keys FeedScreen so it refetches after a
+/// successful capture, without reaching for a state-management package for
+/// one signal.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -37,14 +42,30 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _tabIndex = 0;
   int _feedRefreshTick = 0;
+  final _pageController = PageController();
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  /// Nav-bar taps jump instantly (no slide-through-intermediate-pages
+  /// animation) — matches how a tap is expected to behave versus a drag;
+  /// swiping itself is already smooth via PageView's own physics. Guarded
+  /// for desktop, where the PageView (and so the controller) isn't built.
+  void _goToTab(int index) {
+    if (_pageController.hasClients) {
+      _pageController.jumpToPage(index);
+    }
+    setState(() => _tabIndex = index);
+  }
 
   Future<void> _openCapture() async {
     final saved = await QuickCaptureSheet.show(context);
     if (saved == true) {
-      setState(() {
-        _tabIndex = 0;
-        _feedRefreshTick++;
-      });
+      setState(() => _feedRefreshTick++);
+      _goToTab(0);
     }
   }
 
@@ -52,16 +73,22 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
     final tabs = [
-      FeedScreen(key: ValueKey('feed-$_feedRefreshTick')),
-      const FriendsScreen(),
-      const ProfileScreen(),
-      const SettingsScreen(),
+      _KeepAlive(child: FeedScreen(key: ValueKey('feed-$_feedRefreshTick'))),
+      const _KeepAlive(child: FriendsScreen()),
+      const _KeepAlive(child: ProfileScreen()),
+      const _KeepAlive(child: SettingsScreen()),
     ];
-    final content = IndexedStack(index: _tabIndex, children: tabs);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final desktop = MimoBreakpoints.isDesktop(constraints.maxWidth);
+        final content = desktop
+            ? IndexedStack(index: _tabIndex, children: tabs)
+            : PageView(
+                controller: _pageController,
+                onPageChanged: (index) => setState(() => _tabIndex = index),
+                children: tabs,
+              );
         return Scaffold(
           backgroundColor: colors.bg,
           body: desktop
@@ -83,7 +110,7 @@ class _HomeShellState extends State<HomeShell> {
                       bottom: 16,
                       child: _FloatingSidebar(
                         currentIndex: _tabIndex,
-                        onTabSelected: (index) => setState(() => _tabIndex = index),
+                        onTabSelected: _goToTab,
                         onAddPressed: _openCapture,
                       ),
                     ),
@@ -101,7 +128,7 @@ class _HomeShellState extends State<HomeShell> {
                         minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                         child: _FloatingBottomBar(
                           currentIndex: _tabIndex,
-                          onTabSelected: (index) => setState(() => _tabIndex = index),
+                          onTabSelected: _goToTab,
                           onAddPressed: _openCapture,
                         ),
                       ),
@@ -111,6 +138,30 @@ class _HomeShellState extends State<HomeShell> {
         );
       },
     );
+  }
+}
+
+/// Keeps a tab's state alive while a sibling page is showing in the
+/// `PageView` — without this, swiping a tab off-screen disposes it like a
+/// `ListView` item would, losing scroll position and forcing a reload the
+/// moment the user swipes back.
+class _KeepAlive extends StatefulWidget {
+  const _KeepAlive({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 
@@ -151,7 +202,7 @@ class _FloatingSidebar extends StatelessWidget {
                   gradient: MimoColors.gradient,
                   borderRadius: BorderRadius.circular(9),
                 ),
-                child: const Icon(Icons.favorite, color: Colors.white, size: 15),
+                child: const MimoMark(size: 28),
               ),
               const SizedBox(width: 10),
               Text('Mimo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colors.ink)),
@@ -224,65 +275,36 @@ class _FloatingBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.topCenter,
-      children: [
-        Container(
-          height: 68,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(_navRadius),
-            boxShadow: [
-              BoxShadow(color: colors.ink.withValues(alpha: 0.12), blurRadius: 24, offset: const Offset(0, 10)),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(_navRadius),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: colors.surface.withValues(alpha: 0.78),
-                  border: Border.all(color: colors.border.withValues(alpha: 0.7)),
-                  borderRadius: BorderRadius.circular(_navRadius),
-                ),
-                child: Row(
-                  children: [
-                    _navItem(colors, 0),
-                    _navItem(colors, 1),
-                    const Expanded(child: SizedBox()),
-                    _navItem(colors, 2),
-                    _navItem(colors, 3),
-                  ],
-                ),
-              ),
+    return Container(
+      height: 68,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(_navRadius),
+        boxShadow: [
+          BoxShadow(color: colors.ink.withValues(alpha: 0.12), blurRadius: 24, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(_navRadius),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: colors.surface.withValues(alpha: 0.78),
+              border: Border.all(color: colors.border.withValues(alpha: 0.7)),
+              borderRadius: BorderRadius.circular(_navRadius),
+            ),
+            child: Row(
+              children: [
+                _navItem(colors, 0),
+                _navItem(colors, 1),
+                _addItem(),
+                _navItem(colors, 2),
+                _navItem(colors, 3),
+              ],
             ),
           ),
         ),
-        Positioned(
-          top: -26,
-          child: GestureDetector(
-            onTap: onAddPressed,
-            child: Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                gradient: MimoColors.gradient,
-                shape: BoxShape.circle,
-                border: Border.all(color: colors.bg, width: 4),
-                boxShadow: [
-                  BoxShadow(
-                    color: MimoColors.gradientA.withValues(alpha: 0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.add, color: Colors.white),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -306,6 +328,33 @@ class _FloatingBottomBar extends StatelessWidget {
                 style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Inline, vertically centered alongside the tabs — not a raised FAB
+  /// poking above the bar. (The old raised-circle version also had a real
+  /// bug: half its hit area sat outside the enclosing Stack's own layout
+  /// bounds, so only the icon glyph near the bar's top edge reliably
+  /// registered taps. `Material`+`InkWell` with a `CircleBorder` here
+  /// gives the whole circle a correctly matching hit area.)
+  Widget _addItem() {
+    return Expanded(
+      child: Center(
+        child: Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onAddPressed,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: const BoxDecoration(gradient: MimoColors.gradient, shape: BoxShape.circle),
+              child: const Icon(Icons.add, color: Colors.white, size: 24),
+            ),
           ),
         ),
       ),

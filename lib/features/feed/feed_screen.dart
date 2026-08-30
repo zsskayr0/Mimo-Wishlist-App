@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
+import '../../core/widgets/mimo_mark.dart';
 import '../../data/models/mimo.dart';
 import '../../data/models/mimo_filters.dart';
 import '../../data/models/folder.dart';
@@ -170,7 +171,7 @@ class _FeedScreenState extends State<FeedScreen> {
                     gradient: MimoColors.gradient,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.favorite, color: Colors.white, size: 14),
+                  child: const MimoMark(size: 26),
                 ),
                 const SizedBox(width: 8),
                 Text('Mimo', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: colors.ink)),

@@ -167,7 +167,6 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: 12,
@@ -175,7 +174,9 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
               margin: const EdgeInsets.only(right: 8),
               decoration: BoxDecoration(color: _folderColor, shape: BoxShape.circle),
             ),
-            Text(widget.folder.name),
+            Expanded(
+              child: Text(widget.folder.name, overflow: TextOverflow.ellipsis, maxLines: 1),
+            ),
           ],
         ),
         actions: [

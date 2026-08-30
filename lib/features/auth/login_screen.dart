@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
+import '../../core/widgets/mimo_mark.dart';
 
 /// Login / Cadastro, built to match the reference layout the user supplied:
 /// dark split panel on wide windows (textured image left, form right),
@@ -223,7 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(gradient: MimoColors.gradient, borderRadius: BorderRadius.circular(16)),
-                  child: const Icon(Icons.favorite, color: Colors.white, size: 24),
+                  child: const MimoMark(size: 52),
                 ),
                 const SizedBox(height: 12),
                 const Text(

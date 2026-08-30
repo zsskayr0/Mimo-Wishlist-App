@@ -4,6 +4,30 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.24-alpha] - 2026-08-30
+
+### Added
+- Marca da Mimo (`MimoMark`, desenhada com `Canvas`/`Path`, sem depender
+  de asset/SVG em runtime) substitui o coração antigo nos 4 lugares que
+  ainda usavam `Icons.favorite`: tela de login, cabeçalho do Feed, barra
+  lateral do desktop e tela de configuração ausente do Supabase.
+- Botão de adicionar mimo embutido na barra inferior, centralizado
+  verticalmente junto das abas — não é mais um círculo flutuante acima
+  da barra.
+- Swipe horizontal entre Feed/Amigos/Perfil/Config no celular, ao estilo
+  Instagram (`PageView`), preservando o estado de cada aba ao trocar
+  (nada recarrega ou perde a posição do scroll ao voltar pra ela).
+
+### Fixed
+- Botão de adicionar mimo só respondia ao toque bem no ícone do "+": a
+  versão flutuante furava a área de toque do próprio `Stack` que a
+  continha (metade do círculo ficava fora dos limites de layout,
+  mesmo pintando por cima via `clipBehavior: Clip.none` — pintura e
+  hit-test não são a mesma coisa). Resolvido embutindo o botão na barra
+  em vez de fazê-lo flutuar por cima.
+- Overflow (`RenderFlex`) no título da tela de pasta com nomes longos —
+  o `Text` não estava dentro de um `Expanded`, então não encolhia.
+
 ## [0.0.23-alpha] - 2026-08-30
 
 ### Added

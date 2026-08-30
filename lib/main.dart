@@ -7,6 +7,7 @@ import 'core/layout/view_mode_controller.dart';
 import 'core/theme/mimo_colors.dart';
 import 'core/theme/mimo_text.dart';
 import 'core/theme/theme_controller.dart';
+import 'core/widgets/mimo_mark.dart';
 import 'features/auth/auth_gate.dart';
 
 Future<void> main() async {
@@ -95,7 +96,7 @@ class _MissingEnvScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(18),
                   gradient: MimoColors.gradient,
                 ),
-                child: const Icon(Icons.favorite, color: Colors.white),
+                child: const MimoMark(size: 56),
               ),
               const SizedBox(height: 16),
               const Text('Mimo', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
