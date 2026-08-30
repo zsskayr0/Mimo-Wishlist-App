@@ -4,6 +4,25 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.23-alpha] - 2026-08-30
+
+### Added
+- Logo definitiva aplicada como ícone do app: tag branca com furo, sobre
+  o gradiente diagonal blush→rosé→violeta, gerada a partir dos SVGs
+  oficiais em ambas as plataformas (Android com ícone adaptativo —
+  fundo e primeiro plano separados — e legado; Windows `.ico`).
+  `tool/generate_icons.dart` (roda via `flutter test`, não faz parte da
+  suíte normal) desenha a marca direto com `dart:ui`/`Canvas` a partir
+  do path SVG e exporta os PNGs fonte em `assets/icon/`; o
+  `flutter_launcher_icons` aplica o resultado pras duas plataformas.
+
+### Fixed
+- Build Android travando com "Could not close incremental caches" no
+  Kotlin (provável antivírus prendendo os arquivos `.tab` bem na hora
+  em que o compilador ia fechá-los) — desativado
+  `kotlin.incremental=false` no `gradle.properties` do módulo Android;
+  incremental não faz falta pra builds do zero.
+
 ## [0.0.22-alpha] - 2026-08-30
 
 ### Fixed
