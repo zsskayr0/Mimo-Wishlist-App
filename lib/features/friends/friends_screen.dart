@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/mimo_colors.dart';
+import '../../data/models/folder.dart';
 import '../../data/models/user_profile.dart';
+import '../../data/repositories/folder_repository.dart';
 import '../../data/repositories/friendship_repository.dart';
+import '../folders/folder_detail_screen.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -16,6 +19,7 @@ class FriendsScreen extends StatefulWidget {
 class _FriendsScreenState extends State<FriendsScreen> {
   final _repository = FriendshipRepository();
   final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
 
   Timer? _debounce;
   List<UserProfile> _searchResults = const [];
@@ -23,18 +27,21 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
   late Future<List<FriendshipRequest>> _requestsFuture;
   late Future<List<UserProfile>> _friendsFuture;
+  late Future<List<Folder>> _sharedFoldersFuture;
 
   @override
   void initState() {
     super.initState();
     _requestsFuture = _repository.fetchIncomingRequests();
     _friendsFuture = _repository.fetchFriends();
+    _sharedFoldersFuture = FolderRepository().fetchSharedWithMe();
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -42,6 +49,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     setState(() {
       _requestsFuture = _repository.fetchIncomingRequests();
       _friendsFuture = _repository.fetchFriends();
+      _sharedFoldersFuture = FolderRepository().fetchSharedWithMe();
     });
   }
 
@@ -78,6 +86,21 @@ class _FriendsScreenState extends State<FriendsScreen> {
     _reloadLists();
   }
 
+  Future<void> _openFriendActions(UserProfile friend) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _FriendActionsSheet(colors: MimoColors.of(context), friend: friend),
+    );
+    if (action != 'remove' || !mounted) return;
+    await _repository.removeFriend(friend.id);
+    _reloadLists();
+  }
+
+  void _openSharedFolder(Folder folder) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => FolderDetailScreen(folder: folder)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
@@ -90,7 +113,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 110),
             children: [
-              const Text('Amigos', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+              Row(
+                children: [
+                  const Text('Amigos', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  _IconButton(icon: Icons.search, onTap: () => _searchFocusNode.requestFocus()),
+                ],
+              ),
               const SizedBox(height: 16),
               Container(
                 height: 44,
@@ -107,6 +136,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     Expanded(
                       child: TextField(
                         controller: _searchController,
+                        focusNode: _searchFocusNode,
                         onChanged: _onSearchChanged,
                         decoration: const InputDecoration(
                           hintText: 'Buscar @usuário',
@@ -173,7 +203,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                     child: const Text('Aceitar', style: TextStyle(fontSize: 12.5)),
                                   ),
                                   const SizedBox(width: 6),
-                                  TextButton(
+                                  OutlinedButton(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: colors.ink,
+                                      side: BorderSide(color: colors.border),
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      minimumSize: Size.zero,
+                                    ),
                                     onPressed: () => _respond(request, accept: false),
                                     child: const Text('Recusar', style: TextStyle(fontSize: 12.5)),
                                   ),
@@ -186,8 +222,26 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     );
                   },
                 ),
-                _SectionLabel('Seus amigos'),
-                const SizedBox(height: 10),
+                FutureBuilder<List<Folder>>(
+                  future: _sharedFoldersFuture,
+                  builder: (context, snapshot) {
+                    final folders = snapshot.data ?? const [];
+                    if (folders.isEmpty) return const SizedBox.shrink();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SectionLabel('Pastas compartilhadas com você'),
+                        const SizedBox(height: 10),
+                        for (final folder in folders)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _SharedFolderRow(folder: folder, onTap: () => _openSharedFolder(folder)),
+                          ),
+                        const SizedBox(height: 12),
+                      ],
+                    );
+                  },
+                ),
                 FutureBuilder<List<UserProfile>>(
                   future: _friendsFuture,
                   builder: (context, snapshot) {
@@ -198,19 +252,26 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       );
                     }
                     final friends = snapshot.data ?? const [];
-                    if (friends.isEmpty) {
-                      return Text(
-                        'Nenhum amigo ainda. Busque por @usuário acima.',
-                        style: TextStyle(color: colors.inkSoft),
-                      );
-                    }
                     return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        for (final friend in friends)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _ProfileRow(profile: friend),
-                          ),
+                        _SectionLabel('Seus amigos${friends.isEmpty ? '' : ' · ${friends.length}'}'),
+                        const SizedBox(height: 10),
+                        if (friends.isEmpty)
+                          Text(
+                            'Nenhum amigo ainda. Busque por @usuário acima.',
+                            style: TextStyle(color: colors.inkSoft),
+                          )
+                        else
+                          for (final friend in friends)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: _ProfileRow(
+                                profile: friend,
+                                showChevron: true,
+                                onTap: () => _openFriendActions(friend),
+                              ),
+                            ),
                       ],
                     );
                   },
@@ -219,6 +280,32 @@ class _FriendsScreenState extends State<FriendsScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _IconButton extends StatelessWidget {
+  const _IconButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(11),
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: colors.surface,
+          border: Border.all(color: colors.border),
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Icon(icon, size: 18, color: colors.ink),
       ),
     );
   }
@@ -244,16 +331,24 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _ProfileRow extends StatelessWidget {
-  const _ProfileRow({required this.profile, this.subtitle, this.trailing});
+  const _ProfileRow({
+    required this.profile,
+    this.subtitle,
+    this.trailing,
+    this.showChevron = false,
+    this.onTap,
+  });
 
   final UserProfile profile;
   final String? subtitle;
   final Widget? trailing;
+  final bool showChevron;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
-    return Container(
+    final row = Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: colors.surface,
@@ -274,13 +369,110 @@ class _ProfileRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('@${profile.username}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                if (subtitle != null)
-                  Text(subtitle!, style: TextStyle(fontSize: 12, color: colors.inkFaint)),
+                Text(
+                  profile.displayName ?? '@${profile.username}',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  subtitle ?? '@${profile.username}',
+                  style: TextStyle(fontSize: 12, color: colors.inkFaint),
+                ),
               ],
             ),
           ),
           ?trailing,
+          if (showChevron) Icon(Icons.chevron_right, color: colors.inkFaint, size: 20),
+        ],
+      ),
+    );
+
+    if (onTap == null) return row;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(borderRadius: BorderRadius.circular(14), onTap: onTap, child: row),
+    );
+  }
+}
+
+class _SharedFolderRow extends StatelessWidget {
+  const _SharedFolderRow({required this.folder, required this.onTap});
+
+  final Folder folder;
+  final VoidCallback onTap;
+
+  Color get _color => Color(int.parse('FF${folder.color.replaceFirst('#', '')}', radix: 16));
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
+    return Material(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            border: Border.all(color: colors.border),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: _color.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(11)),
+                child: Icon(Icons.folder_outlined, color: _color, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(folder.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 2),
+                    Text(
+                      'de @${folder.ownerUsername ?? '—'} · ${folder.mimoCount} ${folder.mimoCount == 1 ? 'mimo' : 'mimos'}',
+                      style: TextStyle(fontSize: 12, color: colors.inkFaint),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: colors.inkFaint, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FriendActionsSheet extends StatelessWidget {
+  const _FriendActionsSheet({required this.colors, required this.friend});
+
+  final MimoColors colors;
+  final UserProfile friend;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(color: colors.surface, borderRadius: const BorderRadius.vertical(top: Radius.circular(22))),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 22),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            title: Text('@${friend.username}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: const Text('Amigos'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.person_remove_outlined, color: Colors.red),
+            title: const Text('Remover amizade', style: TextStyle(color: Colors.red)),
+            onTap: () => Navigator.of(context).pop('remove'),
+          ),
         ],
       ),
     );

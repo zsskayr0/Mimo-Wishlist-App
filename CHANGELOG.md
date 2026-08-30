@@ -4,6 +4,37 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.16-alpha] - 2026-08-29
+
+### Added
+- Perfil real, conforme wireframe: avatar, nome/@usuário, "Editar perfil",
+  cards de mimos/pastas/amigos, Resumo (desorganizados) e Histórico
+  (comprados/arquivados) — todos tocáveis, abrindo a lista filtrada
+  correspondente.
+- Configurações real, conforme wireframe: card de conta (abre "Editar
+  perfil"), Notificações (Push, "em breve"), Privacidade (dois seletores
+  visuais — "Todos" fixo por enquanto, nada aplicado no backend ainda,
+  então tocar mostra "Em breve" em vez de fingir que salvou algo),
+  Aparência (tema, já existia), Sobre o Mimo, Código aberto no GitHub
+  (abre o repo de verdade) e Sair.
+- Amigos: seção nova "Pastas compartilhadas com você" (pastas de outras
+  pessoas das quais você é membro); "Seus amigos" ganhou a contagem;
+  linhas de amigo agora mostram nome + @usuário e abrem um menu com
+  "Remover amizade"; botão de busca no cabeçalho; "Recusar" virou botão
+  com borda (antes era só texto).
+- `EditProfileSheet` compartilhado entre Perfil e Configurações (edita
+  nome e @usuário, com a mesma validação/checagem de disponibilidade do
+  Cadastro).
+
+### Fixed
+- Diálogos flutuantes no desktop (Novo/Editar mimo, Detalhe do mimo,
+  Filtros) agora fecham ao tocar fora deles. O `Dialog` padrão do Flutter
+  absorve toques em toda a própria área — inclusive na margem
+  transparente ao redor do card — antes que cheguem à barreira que
+  fecharia o diálogo; substituído por um `showFloatingDialog` próprio
+  (`GestureDetector` cobrindo a tela, fecha ao tocar fora, absorve toque
+  no próprio card).
+
 ## [0.0.15-alpha] - 2026-08-29
 
 ### Added

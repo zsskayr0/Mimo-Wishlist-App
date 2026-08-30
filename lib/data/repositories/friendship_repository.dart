@@ -94,6 +94,17 @@ class FriendshipRepository {
     });
   }
 
+  /// Deletes the friendship row in whichever direction it exists —
+  /// severs it regardless of who originally sent the request.
+  Future<void> removeFriend(String friendId) async {
+    final myId = _myId;
+    await _client
+        .from('friendships')
+        .delete()
+        .or('and(requester_id.eq.$myId,addressee_id.eq.$friendId),'
+            'and(requester_id.eq.$friendId,addressee_id.eq.$myId)');
+  }
+
   Future<void> respondToRequest(String friendshipId, {required bool accept}) async {
     if (accept) {
       await _client.from('friendships').update({'status': 'aceita'}).eq('id', friendshipId);

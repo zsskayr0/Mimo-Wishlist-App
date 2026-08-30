@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
+import '../../core/widgets/floating_dialog.dart';
 import '../../core/widgets/gradient_button.dart';
 import '../../data/models/mimo.dart';
 import '../../data/repositories/folder_repository.dart';
@@ -27,9 +28,8 @@ class MimoDetailScreen extends StatefulWidget {
   /// page that read as oversized/"zoomed" on a wide window.
   static Future<bool?> open(BuildContext context, {required Mimo mimo}) {
     if (MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width)) {
-      return showDialog<bool>(
-        context: context,
-        barrierColor: Colors.black.withValues(alpha: 0.45),
+      return showFloatingDialog<bool>(
+        context,
         builder: (_) => MimoDetailScreen(mimo: mimo, isDesktop: true),
       );
     }
@@ -453,21 +453,16 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
     final colors = MimoColors.of(context);
 
     if (widget.isDesktop) {
-      return Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.86),
-            child: SizedBox(
-              width: 820,
-              child: Material(
-                color: colors.bg,
-                borderRadius: BorderRadius.circular(20),
-                clipBehavior: Clip.antiAlias,
-                child: _desktopContent(colors),
-              ),
-            ),
+      // showFloatingDialog already centers this and handles tap-outside.
+      return ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.86),
+        child: SizedBox(
+          width: 820,
+          child: Material(
+            color: colors.bg,
+            borderRadius: BorderRadius.circular(20),
+            clipBehavior: Clip.antiAlias,
+            child: _desktopContent(colors),
           ),
         ),
       );

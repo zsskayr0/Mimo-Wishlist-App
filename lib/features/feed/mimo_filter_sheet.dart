@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
+import '../../core/widgets/floating_dialog.dart';
 import '../../core/widgets/gradient_button.dart';
 import '../../data/models/folder.dart';
 import '../../data/models/folder_member.dart';
@@ -44,9 +45,8 @@ class MimoFilterSheet extends StatefulWidget {
     List<FolderMember> members = const [],
   }) {
     if (MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width)) {
-      return showDialog<MimoFilters>(
-        context: context,
-        barrierColor: Colors.black.withValues(alpha: 0.45),
+      return showFloatingDialog<MimoFilters>(
+        context,
         builder: (_) => MimoFilterSheet(
           initial: initial,
           folders: folders,
@@ -386,22 +386,14 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
     );
 
     if (widget.isDesktop) {
-      return Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 680,
-              maxHeight: MediaQuery.of(context).size.height * 0.86,
-            ),
-            child: Container(
-              width: 680,
-              decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(20)),
-              clipBehavior: Clip.antiAlias,
-              child: content,
-            ),
-          ),
+      // showFloatingDialog already centers this and handles tap-outside.
+      return ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.86),
+        child: Container(
+          width: 680,
+          decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(20)),
+          clipBehavior: Clip.antiAlias,
+          child: content,
         ),
       );
     }

@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
+import '../../core/widgets/floating_dialog.dart';
 import '../../core/widgets/gradient_button.dart';
 import '../../data/models/folder.dart';
 import '../../data/models/mimo.dart';
@@ -43,9 +44,8 @@ class QuickCaptureSheet extends StatefulWidget {
   /// wide window.
   static Future<bool?> show(BuildContext context, {Mimo? editingMimo}) {
     if (MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width)) {
-      return showDialog<bool>(
-        context: context,
-        barrierColor: Colors.black.withValues(alpha: 0.45),
+      return showFloatingDialog<bool>(
+        context,
         builder: (_) => QuickCaptureSheet(editingMimo: editingMimo, isDesktop: true),
       );
     }
@@ -536,23 +536,16 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
     );
 
     if (widget.isDesktop) {
-      return Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(24),
-        child: Center(
-          // An explicit width (not just a maxWidth constraint) so this
-          // never depends on how the Form's children happen to resolve
-          // their own intrinsic width.
-          child: SizedBox(
-            width: 480,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.86),
-              child: Container(
-                decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(20)),
-                clipBehavior: Clip.antiAlias,
-                child: form,
-              ),
-            ),
+      // showFloatingDialog already centers this and handles tap-outside —
+      // just the sized card itself here, no Dialog/Center of our own.
+      return SizedBox(
+        width: 480,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.86),
+          child: Container(
+            decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(20)),
+            clipBehavior: Clip.antiAlias,
+            child: form,
           ),
         ),
       );

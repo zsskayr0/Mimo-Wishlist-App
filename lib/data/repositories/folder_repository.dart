@@ -29,6 +29,24 @@ class FolderRepository {
     return (rows as List).map((row) => Folder.fromJson(row as Map<String, dynamic>)).toList();
   }
 
+  /// Folders someone else shared with the current user — for the Amigos
+  /// screen's "Pastas compartilhadas com você" section. RLS already limits
+  /// `folders` to owner-or-member; `neq('owner_id', ...)` narrows that down
+  /// to just the "member, not owner" half, and the `users(username)` embed
+  /// is what lets that section say who shared it.
+  Future<List<Folder>> fetchSharedWithMe() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return const [];
+
+    final rows = await _client
+        .from('folders')
+        .select('*, mimos(count), users(username)')
+        .neq('owner_id', userId)
+        .order('created_at', ascending: false);
+
+    return (rows as List).map((row) => Folder.fromJson(row as Map<String, dynamic>)).toList();
+  }
+
   /// Returns the created row (rather than void) so the caller can show it
   /// immediately instead of waiting on a full list refetch.
   Future<Folder> createFolder({required String name, required String color}) async {
