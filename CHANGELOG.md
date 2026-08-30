@@ -4,6 +4,14 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.33-alpha] - 2026-08-30
+
+### Fixed
+- Grid de cards de pasta desalinhado: era masonry (empacota pela coluna
+  mais curta), o que não faz sentido pra cards de altura quase uniforme
+  e bagunçava a ordem de leitura esquerda-pra-direita. Trocado por um
+  grid de verdade nas três variantes (desktop, grid 2 e grid 3 mobile).
+
 ## [0.0.32-alpha] - 2026-08-30
 
 ### Added

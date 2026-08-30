@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/layout/breakpoints.dart';
@@ -561,13 +560,25 @@ class _FolderTilesArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A real GridView here, not Masonry — folder cards are all roughly
+    // the same height (unlike mimo cards, which genuinely vary with
+    // title/price/tags), so Masonry's shortest-column-first packing just
+    // reordered them out of left-to-right reading order for no benefit.
+    // childAspectRatio is a rough estimate (cover is a square, the text
+    // footer below it is a near-fixed pixel height regardless of cell
+    // width) tuned a little short on purpose — a card with less content
+    // than the shared-folder worst case just leaves a bit of blank space
+    // at the bottom of its cell rather than needing an exact fit.
     if (isDesktop) {
-      return MasonryGridView.extent(
+      return GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        maxCrossAxisExtent: 190,
-        mainAxisSpacing: 14,
-        crossAxisSpacing: 14,
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 190,
+          mainAxisSpacing: 14,
+          crossAxisSpacing: 14,
+          childAspectRatio: 0.6,
+        ),
         itemCount: sections.length,
         itemBuilder: (context, index) => _tile(sections[index], null),
       );
@@ -576,12 +587,15 @@ class _FolderTilesArea extends StatelessWidget {
       valueListenable: ViewModeController.instance.mobileMode,
       builder: (context, mode, _) {
         if (mode == MobileMimoView.grid2 || mode == MobileMimoView.grid3) {
-          return MasonryGridView.count(
+          return GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: mode == MobileMimoView.grid2 ? 2 : 3,
-            mainAxisSpacing: 14,
-            crossAxisSpacing: 14,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: mode == MobileMimoView.grid2 ? 2 : 3,
+              mainAxisSpacing: 14,
+              crossAxisSpacing: 14,
+              childAspectRatio: mode == MobileMimoView.grid2 ? 0.58 : 0.52,
+            ),
             itemCount: sections.length,
             itemBuilder: (context, index) => _tile(sections[index], mode),
           );
