@@ -4,6 +4,21 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.32-alpha] - 2026-08-30
+
+### Added
+- Cards de pasta (visão agrupada do Feed) seguem o modo de visualização
+  escolhido: Grid 2/3 colunas → card no mesmo tamanho dos mimos; Lista →
+  disposição igual à antiga tela de Pastas; Lista detalhada → mini
+  ícones comprimidos das fotos dos itens da pasta. No desktop, pastas
+  ficam sempre em card dinâmico de largura fixa, mesmo quando o modo dos
+  mimos é Tabela — aí os mimos desorganizados abaixo é que seguem o modo
+  escolhido de verdade (inclusive tabela).
+- A pilha de avatares de quem tem acesso (antes só na tela de Pastas)
+  agora aparece em todas as formas de card de pasta, em toda visão.
+- "Opções da pasta" direto do card/linha, sem precisar entrar na pasta:
+  botão "•••" no desktop, toque longo no mobile.
+
 ## [0.0.31-alpha] - 2026-08-30
 
 ### Changed

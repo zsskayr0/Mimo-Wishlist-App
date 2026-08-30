@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/layout/breakpoints.dart';
+import '../../core/layout/mimo_view_mode.dart';
+import '../../core/layout/view_mode_controller.dart';
 import '../../core/theme/mimo_colors.dart';
 import '../../core/widgets/mimo_mark.dart';
 import '../../data/models/mimo.dart';
@@ -12,10 +15,11 @@ import '../../data/repositories/folder_repository.dart';
 import '../../data/repositories/mimo_repository.dart';
 import '../../data/repositories/tag_repository.dart';
 import '../folders/folder_detail_screen.dart';
+import '../folders/folder_options_sheet.dart';
 import '../folders/folders_screen.dart';
+import '../folders/widgets/folder_tiles.dart';
 import '../mimo_detail/mimo_detail_screen.dart';
 import 'mimo_filter_sheet.dart';
-import 'widgets/mimo_card.dart';
 import 'widgets/mimo_collection_view.dart';
 
 class FeedScreen extends StatefulWidget {
@@ -110,6 +114,19 @@ class _FeedScreenState extends State<FeedScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => FolderDetailScreen(folder: folder)),
     );
+  }
+
+  /// "Opções da pasta" on the go, straight from its tile in the grouped
+  /// view — desktop's "•••" button or mobile's long-press.
+  Future<void> _openFolderOptions(Folder folder) async {
+    final isOwner =
+        folder.ownerId == Supabase.instance.client.auth.currentUser?.id;
+    await FolderOptionsSheet.show(context, folder: folder, isOwner: isOwner);
+    if (!mounted) return;
+    _folderRepository.fetchFolders().then((f) {
+      if (mounted) setState(() => _folders = f);
+    });
+    _load();
   }
 
   Future<void> _openDetail(Mimo mimo) async {
@@ -362,7 +379,7 @@ class _FeedScreenState extends State<FeedScreen> {
     if (_groupByFolder) {
       return RefreshIndicator(
         onRefresh: _load,
-        child: _buildGroupedBody(colors, mimos),
+        child: _buildGroupedBody(colors, isDesktop, mimos),
       );
     }
     return RefreshIndicator(
@@ -379,22 +396,31 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 
-  /// "Pastas" toggled on: one compact card per folder (cover photo if
-  /// it has one, otherwise a colored icon tile) instead of expanding
-  /// every mimo inline — tap a folder card to actually open it.
-  /// Unorganized mimos show as their normal individual cards below.
-  Widget _buildGroupedBody(MimoColors colors, List<Mimo> mimos) {
-    final counts = <String, int>{};
+  /// "Pastas" toggled on: one compact tile per folder — shape follows
+  /// the current view mode ("Grid" → FolderCard at 2/3 columns, "Lista"
+  /// → FolderListTile, "Lista detalhada" → FolderDetailedTile with mini
+  /// cover thumbnails; desktop always uses FolderCard at a fixed width,
+  /// regardless of the selected DesktopMimoView — "as pastas continuam
+  /// em card"). Unorganized mimos render below via the real
+  /// MimoCollectionView (shrink-wrapped), so they look exactly like the
+  /// normal ungrouped Feed in whatever mode is selected — "os mimos
+  /// podem ficar em lista, mas as pastas continuam em card".
+  Widget _buildGroupedBody(
+    MimoColors colors,
+    bool isDesktop,
+    List<Mimo> mimos,
+  ) {
+    final byFolder = <String, List<Mimo>>{};
     final unorganized = <Mimo>[];
     for (final mimo in mimos) {
       final folderId = mimo.folderId;
       if (folderId == null) {
         unorganized.add(mimo);
       } else {
-        counts[folderId] = (counts[folderId] ?? 0) + 1;
+        (byFolder[folderId] ??= []).add(mimo);
       }
     }
-    final sections = _folders.where((f) => counts.containsKey(f.id)).toList();
+    final sections = _folders.where((f) => byFolder.containsKey(f.id)).toList();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
@@ -408,133 +434,34 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
         ),
         if (sections.isNotEmpty) ...[
-          MasonryGridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 14,
-            crossAxisSpacing: 14,
-            itemCount: sections.length,
-            itemBuilder: (context, index) => _FolderCard(
-              folder: sections[index],
-              count: counts[sections[index].id]!,
-              onTap: () => _openFolder(sections[index]),
-            ),
+          _FolderTilesArea(
+            isDesktop: isDesktop,
+            sections: sections,
+            byFolder: byFolder,
+            onOpenFolder: _openFolder,
+            onOpenOptions: _openFolderOptions,
           ),
           const SizedBox(height: 22),
         ],
         if (unorganized.isNotEmpty) ...[
           _FolderSectionHeader(count: unorganized.length),
           const SizedBox(height: 10),
-          _GroupedGrid(mimos: unorganized, onTap: _openDetail),
+          MimoCollectionView(
+            mimos: unorganized,
+            onTap: _openDetail,
+            isDesktop: isDesktop,
+            shrinkWrap: true,
+            onPriorityChanged: _onPriorityChanged,
+            onStatusChanged: _onStatusChanged,
+          ),
         ],
       ],
     );
   }
 }
 
-class _FolderCard extends StatelessWidget {
-  const _FolderCard({
-    required this.folder,
-    required this.count,
-    required this.onTap,
-  });
-
-  final Folder folder;
-  final int count;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = MimoColors.of(context);
-    final color = Color(
-      int.parse('FF${folder.color.replaceFirst('#', '')}', radix: 16),
-    );
-
-    return Material(
-      color: colors.surface,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: colors.border),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AspectRatio(
-                aspectRatio: 1,
-                child: folder.coverImageUrl == null
-                    ? Container(
-                        color: color.withValues(alpha: 0.14),
-                        alignment: Alignment.center,
-                        child: Icon(
-                          Icons.folder_rounded,
-                          size: 42,
-                          color: color,
-                        ),
-                      )
-                    : Image.network(
-                        folder.coverImageUrl!,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      folder.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          '$count ${count == 1 ? 'mimo' : 'mimos'}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colors.inkFaint,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (folder.isShared) ...[
-                          const SizedBox(width: 6),
-                          Icon(
-                            Icons.people_alt_rounded,
-                            size: 12,
-                            color: MimoColors.gradientA,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Just the "Desorganizado" label now — folders themselves render as
-/// _FolderCard tiles above, not sections with their mimos expanded
-/// inline.
+/// Just the "Desorganizado" label — folders themselves render as tiles
+/// above, not sections with their mimos expanded inline.
 class _FolderSectionHeader extends StatelessWidget {
   const _FolderSectionHeader({required this.count});
 
@@ -573,23 +500,101 @@ class _FolderSectionHeader extends StatelessWidget {
   }
 }
 
-class _GroupedGrid extends StatelessWidget {
-  const _GroupedGrid({required this.mimos, required this.onTap});
+/// Picks the folder tile shape for the current view mode and lays out
+/// the section — desktop is always a fixed-width FolderCard grid;
+/// mobile switches shape (and column count, for the grid modes) with
+/// `ViewModeController.instance.mobileMode`.
+class _FolderTilesArea extends StatelessWidget {
+  const _FolderTilesArea({
+    required this.isDesktop,
+    required this.sections,
+    required this.byFolder,
+    required this.onOpenFolder,
+    required this.onOpenOptions,
+  });
 
-  final List<Mimo> mimos;
-  final ValueChanged<Mimo> onTap;
+  final bool isDesktop;
+  final List<Folder> sections;
+  final Map<String, List<Mimo>> byFolder;
+  final ValueChanged<Folder> onOpenFolder;
+  final ValueChanged<Folder> onOpenOptions;
+
+  Widget _tile(Folder folder, MobileMimoView? mode) {
+    final folderMimos = byFolder[folder.id]!;
+    final count = folderMimos.length;
+    void onTap() => onOpenFolder(folder);
+    void onOptions() => onOpenOptions(folder);
+
+    if (isDesktop ||
+        mode == MobileMimoView.grid2 ||
+        mode == MobileMimoView.grid3) {
+      return FolderCard(
+        folder: folder,
+        count: count,
+        onTap: onTap,
+        isDesktop: isDesktop,
+        onOptions: onOptions,
+      );
+    }
+    if (mode == MobileMimoView.detailedList) {
+      final coverUrls = [
+        for (final m in folderMimos)
+          if (m.coverImageUrl != null) m.coverImageUrl!,
+      ].take(4).toList();
+      return FolderDetailedTile(
+        folder: folder,
+        count: count,
+        coverUrls: coverUrls,
+        onTap: onTap,
+        isDesktop: false,
+        onOptions: onOptions,
+      );
+    }
+    return FolderListTile(
+      folder: folder,
+      count: count,
+      onTap: onTap,
+      isDesktop: false,
+      onOptions: onOptions,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MasonryGridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      mainAxisSpacing: 14,
-      crossAxisSpacing: 14,
-      itemCount: mimos.length,
-      itemBuilder: (context, index) =>
-          MimoCard(mimo: mimos[index], onTap: () => onTap(mimos[index])),
+    if (isDesktop) {
+      return MasonryGridView.extent(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        maxCrossAxisExtent: 190,
+        mainAxisSpacing: 14,
+        crossAxisSpacing: 14,
+        itemCount: sections.length,
+        itemBuilder: (context, index) => _tile(sections[index], null),
+      );
+    }
+    return ValueListenableBuilder<MobileMimoView>(
+      valueListenable: ViewModeController.instance.mobileMode,
+      builder: (context, mode, _) {
+        if (mode == MobileMimoView.grid2 || mode == MobileMimoView.grid3) {
+          return MasonryGridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: mode == MobileMimoView.grid2 ? 2 : 3,
+            mainAxisSpacing: 14,
+            crossAxisSpacing: 14,
+            itemCount: sections.length,
+            itemBuilder: (context, index) => _tile(sections[index], mode),
+          );
+        }
+        return Column(
+          children: [
+            for (final folder in sections) ...[
+              _tile(folder, mode),
+              const SizedBox(height: 10),
+            ],
+          ],
+        );
+      },
     );
   }
 }

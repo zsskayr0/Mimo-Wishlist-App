@@ -69,12 +69,22 @@ class MimoCollectionView extends StatelessWidget {
     this.onStatusChanged,
     this.onCreateInline,
     this.ownerAvatarOf,
+    this.shrinkWrap = false,
   });
 
   final List<Mimo> mimos;
   final ValueChanged<Mimo> onTap;
   final bool isDesktop;
   final EdgeInsets padding;
+
+  /// True when this is embedded inside another already-scrolling list
+  /// (Feed's grouped-by-folder view, for the "Desorganizado" section) —
+  /// sizes to its content and disables its own scrolling instead of
+  /// assuming it's the page's one scrollable. Table mode has no sensible
+  /// shrink-wrapped form (its header + `Expanded` row list assumes a
+  /// bounded height), so it renders as detailedList instead when this is
+  /// true — "os mimos podem ficar em lista" was explicitly fine with that.
+  final bool shrinkWrap;
 
   /// Shared-folder "who added this" badge (list/grid modes only) — null
   /// return hides it for that mimo (e.g. it's the viewer's own). Whole
@@ -107,6 +117,7 @@ class MimoCollectionView extends StatelessWidget {
               detailed: false,
               padding: padding,
               ownerAvatarOf: ownerAvatarOf,
+              shrinkWrap: shrinkWrap,
             ),
             DesktopMimoView.detailedList => _MimoListView(
               mimos: mimos,
@@ -114,6 +125,17 @@ class MimoCollectionView extends StatelessWidget {
               detailed: true,
               padding: padding,
               ownerAvatarOf: ownerAvatarOf,
+              shrinkWrap: shrinkWrap,
+            ),
+            // No sensible shrink-wrapped table (see `shrinkWrap`'s doc) —
+            // falls back to detailedList when embedded.
+            DesktopMimoView.table when shrinkWrap => _MimoListView(
+              mimos: mimos,
+              onTap: onTap,
+              detailed: true,
+              padding: padding,
+              ownerAvatarOf: ownerAvatarOf,
+              shrinkWrap: true,
             ),
             DesktopMimoView.table => _MimoTableView(
               mimos: mimos,
@@ -129,6 +151,7 @@ class MimoCollectionView extends StatelessWidget {
               dynamicCover: true,
               padding: padding,
               ownerAvatarOf: ownerAvatarOf,
+              shrinkWrap: shrinkWrap,
             ),
           };
         },
@@ -144,6 +167,7 @@ class MimoCollectionView extends StatelessWidget {
             detailed: false,
             padding: padding,
             ownerAvatarOf: ownerAvatarOf,
+            shrinkWrap: shrinkWrap,
           ),
           MobileMimoView.detailedList => _MimoListView(
             mimos: mimos,
@@ -151,6 +175,7 @@ class MimoCollectionView extends StatelessWidget {
             detailed: true,
             padding: padding,
             ownerAvatarOf: ownerAvatarOf,
+            shrinkWrap: shrinkWrap,
           ),
           MobileMimoView.grid2 => _MimoGridView(
             mimos: mimos,
@@ -158,6 +183,7 @@ class MimoCollectionView extends StatelessWidget {
             crossAxisCount: 2,
             padding: padding,
             ownerAvatarOf: ownerAvatarOf,
+            shrinkWrap: shrinkWrap,
           ),
           MobileMimoView.grid3 => _MimoGridView(
             mimos: mimos,
@@ -165,6 +191,7 @@ class MimoCollectionView extends StatelessWidget {
             crossAxisCount: 3,
             padding: padding,
             ownerAvatarOf: ownerAvatarOf,
+            shrinkWrap: shrinkWrap,
           ),
         };
       },
@@ -180,6 +207,7 @@ class _MimoGridView extends StatelessWidget {
     this.crossAxisCount,
     required this.padding,
     this.ownerAvatarOf,
+    this.shrinkWrap = false,
   });
 
   final List<Mimo> mimos;
@@ -191,6 +219,7 @@ class _MimoGridView extends StatelessWidget {
   final int? crossAxisCount;
   final EdgeInsets padding;
   final String? Function(Mimo mimo)? ownerAvatarOf;
+  final bool shrinkWrap;
 
   @override
   Widget build(BuildContext context) {
@@ -201,6 +230,8 @@ class _MimoGridView extends StatelessWidget {
         mainAxisSpacing: 14,
         crossAxisSpacing: 14,
         itemCount: mimos.length,
+        shrinkWrap: shrinkWrap,
+        physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
         itemBuilder: (context, index) => MimoCard(
           mimo: mimos[index],
           onTap: () => onTap(mimos[index]),
@@ -215,6 +246,8 @@ class _MimoGridView extends StatelessWidget {
       mainAxisSpacing: 14,
       crossAxisSpacing: 14,
       itemCount: mimos.length,
+      shrinkWrap: shrinkWrap,
+      physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
       itemBuilder: (context, index) => MimoCard(
         mimo: mimos[index],
         onTap: () => onTap(mimos[index]),
@@ -232,6 +265,7 @@ class _MimoListView extends StatelessWidget {
     required this.detailed,
     required this.padding,
     this.ownerAvatarOf,
+    this.shrinkWrap = false,
   });
 
   final List<Mimo> mimos;
@@ -239,12 +273,15 @@ class _MimoListView extends StatelessWidget {
   final bool detailed;
   final EdgeInsets padding;
   final String? Function(Mimo mimo)? ownerAvatarOf;
+  final bool shrinkWrap;
 
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
       padding: padding,
       itemCount: mimos.length,
+      shrinkWrap: shrinkWrap,
+      physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final mimo = mimos[index];

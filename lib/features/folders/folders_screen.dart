@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
 import '../../data/models/folder.dart';
 import '../../data/repositories/folder_repository.dart';
 import 'create_folder_sheet.dart';
 import 'folder_detail_screen.dart';
+import 'folder_options_sheet.dart';
+import 'widgets/folder_tiles.dart';
 
 class FoldersScreen extends StatefulWidget {
   const FoldersScreen({super.key});
@@ -52,6 +56,13 @@ class _FoldersScreenState extends State<FoldersScreen> {
     if (created != null) {
       setState(() => _folders = [created, ...?_folders]);
     }
+    _load();
+  }
+
+  Future<void> _openFolderOptions(Folder folder) async {
+    final isOwner =
+        folder.ownerId == Supabase.instance.client.auth.currentUser?.id;
+    await FolderOptionsSheet.show(context, folder: folder, isOwner: isOwner);
     _load();
   }
 
@@ -125,164 +136,25 @@ class _FoldersScreenState extends State<FoldersScreen> {
         ),
       );
     }
+    final isDesktop = MimoBreakpoints.isDesktop(
+      MediaQuery.of(context).size.width,
+    );
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         itemCount: folders.length,
         separatorBuilder: (_, _) => const SizedBox(height: 10),
-        itemBuilder: (context, index) => _FolderRow(
+        itemBuilder: (context, index) => FolderListTile(
           folder: folders[index],
+          count: folders[index].mimoCount,
+          isDesktop: isDesktop,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => FolderDetailScreen(folder: folders[index]),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Small overlapping avatar stack for a shared folder's members, next to
-/// the "Compartilhada" badge — matches the wireframe's `.avatars` row.
-class _AvatarStack extends StatelessWidget {
-  const _AvatarStack({required this.urls, required this.colors});
-
-  final List<String?> urls;
-  final MimoColors colors;
-
-  static const _max = 3;
-  static const _size = 18.0;
-  static const _overlap = 6.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final shown = urls.take(_max).toList();
-    return SizedBox(
-      width: _size + (shown.length - 1) * (_size - _overlap),
-      height: _size,
-      child: Stack(
-        children: [
-          for (var i = 0; i < shown.length; i++)
-            Positioned(
-              left: i * (_size - _overlap),
-              child: Container(
-                width: _size,
-                height: _size,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: colors.placeholder,
-                  border: Border.all(color: colors.surface, width: 1.5),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: shown[i] == null
-                    ? null
-                    : Image.network(shown[i]!, fit: BoxFit.cover),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FolderRow extends StatelessWidget {
-  const _FolderRow({required this.folder, required this.onTap});
-
-  final Folder folder;
-  final VoidCallback onTap;
-
-  Color get _color =>
-      Color(int.parse('FF${folder.color.replaceFirst('#', '')}', radix: 16));
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = MimoColors.of(context);
-    return Material(
-      color: colors.surface,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            border: Border.all(color: colors.border),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: _color.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.folder_outlined, color: _color, size: 20),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      folder.name,
-                      style: const TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Text(
-                          '${folder.mimoCount} ${folder.mimoCount == 1 ? 'mimo' : 'mimos'}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colors.inkFaint,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (folder.isShared) ...[
-                          const SizedBox(width: 8),
-                          if (folder.memberAvatarUrls.isNotEmpty) ...[
-                            _AvatarStack(
-                              urls: folder.memberAvatarUrls,
-                              colors: colors,
-                            ),
-                            const SizedBox(width: 6),
-                          ],
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: MimoColors.gradientA.withValues(
-                                alpha: 0.12,
-                              ),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: const Text(
-                              'Compartilhada',
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.bold,
-                                color: MimoColors.gradientA,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, color: colors.inkFaint, size: 20),
-            ],
-          ),
+          onOptions: () => _openFolderOptions(folders[index]),
         ),
       ),
     );

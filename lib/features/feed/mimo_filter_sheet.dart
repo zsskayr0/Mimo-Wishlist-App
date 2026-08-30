@@ -96,7 +96,10 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
               selected: _filters.sortBy == MimoSortBy.dateAdded,
               colors: colors,
               fillWidth: true,
-              onTap: () => setState(() => _filters = _filters.copyWith(sortBy: MimoSortBy.dateAdded)),
+              onTap: () => setState(
+                () =>
+                    _filters = _filters.copyWith(sortBy: MimoSortBy.dateAdded),
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -106,14 +109,18 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
               selected: _filters.sortBy == MimoSortBy.price,
               colors: colors,
               fillWidth: true,
-              onTap: () => setState(() => _filters = _filters.copyWith(sortBy: MimoSortBy.price)),
+              onTap: () => setState(
+                () => _filters = _filters.copyWith(sortBy: MimoSortBy.price),
+              ),
             ),
           ),
           const SizedBox(width: 8),
           InkWell(
             borderRadius: BorderRadius.circular(10),
             onTap: () => setState(
-              () => _filters = _filters.copyWith(sortDescending: !_filters.sortDescending),
+              () => _filters = _filters.copyWith(
+                sortDescending: !_filters.sortDescending,
+              ),
             ),
             child: Container(
               width: 38,
@@ -123,7 +130,9 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                _filters.sortDescending ? Icons.arrow_downward : Icons.arrow_upward,
+                _filters.sortDescending
+                    ? Icons.arrow_downward
+                    : Icons.arrow_upward,
                 size: 16,
                 color: colors.ink,
               ),
@@ -171,11 +180,15 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
             children: [
               _Choice(
                 label: 'Todas',
-                selected: _filters.folderId == null && !_filters.unorganizedOnly,
+                selected:
+                    _filters.folderId == null && !_filters.unorganizedOnly,
                 colors: colors,
                 pill: true,
                 onTap: () => setState(
-                  () => _filters = _filters.copyWith(folderId: () => null, unorganizedOnly: false),
+                  () => _filters = _filters.copyWith(
+                    folderId: () => null,
+                    unorganizedOnly: false,
+                  ),
                 ),
               ),
               _Choice(
@@ -184,7 +197,10 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
                 colors: colors,
                 pill: true,
                 onTap: () => setState(
-                  () => _filters = _filters.copyWith(folderId: () => null, unorganizedOnly: true),
+                  () => _filters = _filters.copyWith(
+                    folderId: () => null,
+                    unorganizedOnly: true,
+                  ),
                 ),
               ),
               for (final folder in widget.folders)
@@ -194,7 +210,10 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
                   colors: colors,
                   pill: true,
                   onTap: () => setState(
-                    () => _filters = _filters.copyWith(folderId: () => folder.id, unorganizedOnly: false),
+                    () => _filters = _filters.copyWith(
+                      folderId: () => folder.id,
+                      unorganizedOnly: false,
+                    ),
                   ),
                 ),
             ],
@@ -213,7 +232,9 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
                 selected: _filters.ownerId == null,
                 colors: colors,
                 pill: true,
-                onTap: () => setState(() => _filters = _filters.copyWith(ownerId: () => null)),
+                onTap: () => setState(
+                  () => _filters = _filters.copyWith(ownerId: () => null),
+                ),
               ),
               for (final member in widget.members)
                 _Choice(
@@ -221,7 +242,11 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
                   selected: _filters.ownerId == member.userId,
                   colors: colors,
                   pill: true,
-                  onTap: () => setState(() => _filters = _filters.copyWith(ownerId: () => member.userId)),
+                  onTap: () => setState(
+                    () => _filters = _filters.copyWith(
+                      ownerId: () => member.userId,
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -238,15 +263,23 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
               selected: _filters.priority == null,
               colors: colors,
               pill: true,
-              onTap: () => setState(() => _filters = _filters.copyWith(priority: () => null)),
+              onTap: () => setState(
+                () => _filters = _filters.copyWith(priority: () => null),
+              ),
             ),
-            for (final option in const [('baixa', 'Baixa'), ('media', 'Média'), ('alta', 'Alta')])
+            for (final option in const [
+              ('baixa', 'Baixa'),
+              ('media', 'Média'),
+              ('alta', 'Alta'),
+            ])
               _Choice(
                 label: option.$2,
                 selected: _filters.priority == option.$1,
                 colors: colors,
                 pill: true,
-                onTap: () => setState(() => _filters = _filters.copyWith(priority: () => option.$1)),
+                onTap: () => setState(
+                  () => _filters = _filters.copyWith(priority: () => option.$1),
+                ),
               ),
           ],
         ),
@@ -263,7 +296,9 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
               selected: _filters.purchaseStatus == null,
               colors: colors,
               pill: true,
-              onTap: () => setState(() => _filters = _filters.copyWith(purchaseStatus: () => null)),
+              onTap: () => setState(
+                () => _filters = _filters.copyWith(purchaseStatus: () => null),
+              ),
             ),
             for (final option in const [
               ('desejado', 'Desejado'),
@@ -275,7 +310,11 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
                 selected: _filters.purchaseStatus == option.$1,
                 colors: colors,
                 pill: true,
-                onTap: () => setState(() => _filters = _filters.copyWith(purchaseStatus: () => option.$1)),
+                onTap: () => setState(
+                  () => _filters = _filters.copyWith(
+                    purchaseStatus: () => option.$1,
+                  ),
+                ),
               ),
           ],
         ),
@@ -293,7 +332,9 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
                 selected: _filters.storeDomain == null,
                 colors: colors,
                 pill: true,
-                onTap: () => setState(() => _filters = _filters.copyWith(storeDomain: () => null)),
+                onTap: () => setState(
+                  () => _filters = _filters.copyWith(storeDomain: () => null),
+                ),
               ),
               for (final store in widget.stores)
                 _Choice(
@@ -301,7 +342,10 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
                   selected: _filters.storeDomain == store,
                   colors: colors,
                   pill: true,
-                  onTap: () => setState(() => _filters = _filters.copyWith(storeDomain: () => store)),
+                  onTap: () => setState(
+                    () =>
+                        _filters = _filters.copyWith(storeDomain: () => store),
+                  ),
                 ),
             ],
           ),
@@ -322,9 +366,19 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: left)),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: left,
+          ),
+        ),
         const SizedBox(width: 28),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: right)),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: right,
+          ),
+        ),
       ],
     );
   }
@@ -348,15 +402,22 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
                     width: 38,
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(color: colors.placeholder, borderRadius: BorderRadius.circular(3)),
+                    decoration: BoxDecoration(
+                      color: colors.placeholder,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
                   ),
                 ),
               Row(
                 children: [
-                  const Text('Filtrar e ordenar', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Filtrar e ordenar',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  ),
                   const Spacer(),
                   TextButton(
-                    onPressed: () => setState(() => _filters = const MimoFilters()),
+                    onPressed: () =>
+                        setState(() => _filters = const MimoFilters()),
                     child: const Text('Limpar'),
                   ),
                 ],
@@ -394,7 +455,9 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
       // InkWell inside (the _Choice chips) needs one or throws "No
       // Material widget found" the moment it builds.
       return ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.86),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.86,
+        ),
         child: Material(
           color: colors.surface,
           borderRadius: BorderRadius.circular(20),
@@ -405,13 +468,17 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
     }
 
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: Container(
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         ),
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.88),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.88,
+        ),
         child: content,
       ),
     );
@@ -419,7 +486,11 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.label, required this.colors, required this.child});
+  const _Section({
+    required this.label,
+    required this.colors,
+    required this.child,
+  });
 
   final String label;
   final MimoColors colors;
@@ -434,7 +505,12 @@ class _Section extends StatelessWidget {
         children: [
           Text(
             label.toUpperCase(),
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: colors.inkFaint),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+              color: colors.inkFaint,
+            ),
           ),
           const SizedBox(height: 8),
           child,
@@ -472,11 +548,18 @@ class _Choice extends StatelessWidget {
     final text = Text(
       label,
       textAlign: TextAlign.center,
-      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: selected ? colors.bg : colors.ink),
+      style: TextStyle(
+        fontSize: 12.5,
+        fontWeight: FontWeight.w600,
+        color: selected ? colors.bg : colors.ink,
+      ),
     );
     final decoration = BoxDecoration(
       color: selected ? colors.ink : Colors.transparent,
-      border: Border.all(color: selected ? colors.ink : colors.border, width: 1.5),
+      border: Border.all(
+        color: selected ? colors.ink : colors.border,
+        width: 1.5,
+      ),
       borderRadius: BorderRadius.circular(pill ? 999 : 10),
     );
     // `Container(alignment: ...)` expands to fill any *bounded* width
@@ -499,6 +582,10 @@ class _Choice extends StatelessWidget {
             child: text,
           );
 
-    return InkWell(borderRadius: BorderRadius.circular(pill ? 999 : 10), onTap: onTap, child: child);
+    return InkWell(
+      borderRadius: BorderRadius.circular(pill ? 999 : 10),
+      onTap: onTap,
+      child: child,
+    );
   }
 }
