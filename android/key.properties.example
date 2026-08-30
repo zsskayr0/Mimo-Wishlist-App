@@ -1,0 +1,4 @@
+storePassword=
+keyPassword=
+keyAlias=mimo
+storeFile=mimo-release-key.jks

@@ -4,6 +4,25 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.36-alpha] - 2026-08-30
+
+### Added
+- Assinatura de release de verdade pro Android — `android/key.properties`
+  (gitignored) + keystore próprio; sem esse arquivo o build release cai
+  pra assinatura de debug sozinho, então nunca quebra. Confirmado:
+  `flutter build apk --release` e `flutter build windows --release`
+  funcionam.
+- CI no GitHub Actions (`.github/workflows/ci.yml`): analyze + test em
+  todo push/PR pra `main`, mais um build release de Android e de Windows
+  pra pegar regressão de build cedo.
+- Primeiros testes automatizados de verdade além do smoke test: lógica
+  de filtro/ordenação (`MimoFilters`) e parsing de JSON dos modelos
+  (`Mimo`, `Folder`, `FolderMember`, `UserProfile`) — cobrindo os embeds
+  do Postgrest que já causaram bug real nessa sessão.
+- README atualizado pra refletir o app de verdade (busca/filtros, pastas
+  compartilhadas, share intent, modos de visualização) e documentar a
+  numeração das migrations até a 008 e como gerar um build assinado.
+
 ## [0.0.35-alpha] - 2026-08-30
 
 ### Fixed
