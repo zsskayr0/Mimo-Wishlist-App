@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/theme/mimo_colors.dart';
+import '../../core/widgets/grid_dynamic_icon.dart';
 import '../../data/models/folder.dart';
 import '../../data/models/folder_member.dart';
 import '../../data/models/mimo.dart';
@@ -31,6 +33,9 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   final _searchController = TextEditingController();
 
   MimoFilters _filters = const MimoFilters();
+
+  /// See FeedScreen for the same toggle.
+  bool _dynamicCovers = false;
 
   /// See FeedScreen for why this exists: makes a delete disappear
   /// instantly instead of waiting on the next fetch to land.
@@ -76,9 +81,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   }
 
   Future<void> _openDetail(Mimo mimo) async {
-    final deleted = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => MimoDetailScreen(mimo: mimo)),
-    );
+    final deleted = await MimoDetailScreen.open(context, mimo: mimo);
     if (deleted == true) setState(() => _hiddenIds.add(mimo.id));
     _reloadMimos();
   }
@@ -194,6 +197,22 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: () => setState(() => _dynamicCovers = !_dynamicCovers),
+                        borderRadius: BorderRadius.circular(999),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _dynamicCovers ? colors.ink : Colors.transparent,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: GridDynamicIcon(
+                            size: 16,
+                            color: _dynamicCovers ? colors.bg : colors.inkFaint,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -251,18 +270,19 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                         ),
                       );
                     }
-                    return GridView.builder(
+                    // Masonry — see MimoCard's doc comment: a fixed-aspect
+                    // grid forced every card to the same cell height,
+                    // leaving blank space under the pill on shorter cards.
+                    return MasonryGridView.extent(
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 190,
-                        mainAxisSpacing: 14,
-                        crossAxisSpacing: 14,
-                        childAspectRatio: 0.52,
-                      ),
+                      maxCrossAxisExtent: 190,
+                      mainAxisSpacing: 14,
+                      crossAxisSpacing: 14,
                       itemCount: mimos.length,
                       itemBuilder: (context, index) => MimoCard(
                         mimo: mimos[index],
                         onTap: () => _openDetail(mimos[index]),
+                        dynamicCover: _dynamicCovers,
                       ),
                     );
                   },

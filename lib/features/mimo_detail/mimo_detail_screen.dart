@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
 import '../../core/widgets/gradient_button.dart';
 import '../../data/models/mimo.dart';
@@ -10,9 +11,30 @@ import '../capture/quick_capture_sheet.dart';
 import '../folders/folder_picker_sheet.dart';
 
 class MimoDetailScreen extends StatefulWidget {
-  const MimoDetailScreen({super.key, required this.mimo});
+  const MimoDetailScreen({super.key, required this.mimo, this.isDesktop = false});
 
   final Mimo mimo;
+
+  /// True when presented as a centered floating dialog (desktop) instead
+  /// of a pushed full page (mobile) — set by [open], never by a caller
+  /// directly.
+  final bool isDesktop;
+
+  /// "Revisar mimo": on desktop width this opens as the same kind of
+  /// floating dialog as [QuickCaptureSheet], instead of pushing a full
+  /// page that read as oversized/"zoomed" on a wide window.
+  static Future<bool?> open(BuildContext context, {required Mimo mimo}) {
+    if (MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width)) {
+      return showDialog<bool>(
+        context: context,
+        barrierColor: Colors.black.withValues(alpha: 0.45),
+        builder: (_) => MimoDetailScreen(mimo: mimo, isDesktop: true),
+      );
+    }
+    return Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => MimoDetailScreen(mimo: mimo)),
+    );
+  }
 
   @override
   State<MimoDetailScreen> createState() => _MimoDetailScreenState();
@@ -130,9 +152,7 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
 
-    return Scaffold(
-        backgroundColor: colors.bg,
-        body: Stack(
+    final content = Stack(
           children: [
             Positioned.fill(
               child: SafeArea(
@@ -145,7 +165,10 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                         child: Row(
                           children: [
-                            _IconButton(icon: Icons.arrow_back, onTap: () => Navigator.of(context).pop(_isDeleted)),
+                            _IconButton(
+                              icon: widget.isDesktop ? Icons.close : Icons.arrow_back,
+                              onTap: () => Navigator.of(context).pop(_isDeleted),
+                            ),
                             const Spacer(),
                             Text(
                               'DETALHE DO MIMO',
@@ -331,8 +354,33 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
                 ),
               ),
           ],
+        );
+
+    if (widget.isDesktop) {
+      // Same floating-dialog pattern as QuickCaptureSheet — a fixed
+      // SizedBox (not just a max-constraint) so the Stack above has a
+      // definite size to resolve `Positioned.fill`/`Positioned(bottom: 20)`
+      // against, the same way Scaffold's body gives it one on mobile.
+      final dialogHeight = MediaQuery.of(context).size.height * 0.86;
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(24),
+        child: Center(
+          child: SizedBox(
+            width: 480,
+            height: dialogHeight,
+            child: Material(
+              color: colors.bg,
+              borderRadius: BorderRadius.circular(20),
+              clipBehavior: Clip.antiAlias,
+              child: content,
+            ),
+          ),
         ),
       );
+    }
+
+    return Scaffold(backgroundColor: colors.bg, body: content);
   }
 }
 

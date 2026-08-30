@@ -540,15 +540,18 @@ class _QuickCaptureSheetState extends State<QuickCaptureSheet> {
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.all(24),
         child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 480,
-              maxHeight: MediaQuery.of(context).size.height * 0.86,
-            ),
-            child: Container(
-              decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(20)),
-              clipBehavior: Clip.antiAlias,
-              child: form,
+          // An explicit width (not just a maxWidth constraint) so this
+          // never depends on how the Form's children happen to resolve
+          // their own intrinsic width.
+          child: SizedBox(
+            width: 480,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.86),
+              child: Container(
+                decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(20)),
+                clipBehavior: Clip.antiAlias,
+                child: form,
+              ),
             ),
           ),
         ),

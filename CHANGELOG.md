@@ -4,6 +4,28 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.14-alpha] - 2026-08-29
+
+### Added
+- Toggle "Dinâmico" ao lado de "Filtros" (Feed e Pasta): ativado, cada
+  card se ajusta à proporção real da própria imagem de capa; desativado
+  (padrão), continua tudo 1:1 como antes.
+
+### Changed
+- `MimoFilterSheet` também abre como diálogo flutuante centralizado no
+  desktop, igual ao `QuickCaptureSheet` — e nesse modo os filtros ficam
+  em duas colunas (a busca de "Ordenar por" continua em linha única no
+  topo).
+- Grid do Feed e da Pasta trocado de `GridView` (childAspectRatio fixo)
+  pra `MasonryGridView.extent` (`flutter_staggered_grid_view`): cada card
+  agora tem exatamente a altura que precisa — corrige o espaço em branco
+  sobrando embaixo da pill de pasta em cards com título curto ou sem
+  preço.
+- "Revisar mimo" (a tela de Detalhe) agora também abre como diálogo
+  flutuante centralizado no desktop, em vez de página cheia — mesmo
+  tratamento que já tinha sido dado ao "Novo/Editar mimo". No mobile
+  continua página cheia, sem mudança.
+
 ## [0.0.13-alpha] - 2026-08-29
 
 ### Added

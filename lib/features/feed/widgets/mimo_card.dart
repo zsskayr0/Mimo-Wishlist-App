@@ -3,22 +3,30 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/mimo_colors.dart';
 import '../../../data/models/mimo.dart';
 
-/// One grid card. The Desorganizado/Pasta pill is mutually exclusive by
-/// construction — it reads straight off [Mimo.isUnorganized], never both.
+/// One masonry-grid card (see FeedScreen/FolderDetailScreen's
+/// `MasonryGridView.extent`). The Desorganizado/Pasta pill is mutually
+/// exclusive by construction — it reads straight off [Mimo.isUnorganized],
+/// never both.
 ///
-/// The cover is a true 1:1 `AspectRatio` — mimo covers are meant to be
-/// square (the blueprint's "recorte 1x1" rule; see the real crop step in
-/// the capture sheet). The grid's `childAspectRatio` is what has to do
-/// the accommodating: it's tuned for the width `SliverGridDelegateWith-
-/// MaxCrossAxisExtent` actually produces (roughly 150-190px regardless of
-/// window size — the delegate adds columns rather than growing them past
-/// the max), so the image-height-plus-text-block total fits at every
-/// width the delegate can hand this card.
+/// The cover is a true 1:1 `AspectRatio` by default — mimo covers are meant
+/// to be square (the blueprint's "recorte 1x1" rule; see the real crop step
+/// in the capture sheet) — unless [dynamicCover] is on, the Feed's
+/// "cards adapt to the image" toggle, which lets each cover keep its own
+/// natural proportions instead. Everything below the cover sizes to its own
+/// content (`mainAxisSize.min`), never to a fixed cell height — a plain
+/// `GridView` forces every cell to the same `childAspectRatio`, which left
+/// a gap of blank space under the pill on any card shorter than the
+/// tallest one on screen; the masonry grid lets each card be exactly as
+/// tall as it needs to be.
 class MimoCard extends StatelessWidget {
-  const MimoCard({super.key, required this.mimo, this.onTap});
+  const MimoCard({super.key, required this.mimo, this.onTap, this.dynamicCover = false});
 
   final Mimo mimo;
   final VoidCallback? onTap;
+
+  /// When true and the mimo has a cover, the image keeps its real aspect
+  /// ratio instead of being forced into a 1:1 box.
+  final bool dynamicCover;
 
   String _formatPrice(double price) {
     final fixed = price.toStringAsFixed(2).replaceAll('.', ',');
@@ -35,6 +43,34 @@ class MimoCard extends StatelessWidget {
     if (hex == null) return colors.tagGold;
     final clean = hex.replaceFirst('#', '');
     return Color(int.parse('FF$clean', radix: 16));
+  }
+
+  Widget _cover(MimoColors colors) {
+    final hasImage = mimo.coverImageUrl != null;
+
+    // No image to take a ratio from, or the toggle is off — square,
+    // as always.
+    if (!dynamicCover || !hasImage) {
+      return AspectRatio(
+        aspectRatio: 1,
+        child: Container(
+          width: double.infinity,
+          color: colors.placeholder,
+          alignment: Alignment.center,
+          child: !hasImage
+              ? Icon(Icons.image_outlined, color: colors.inkFaint.withValues(alpha: 0.8), size: 30)
+              : Image.network(mimo.coverImageUrl!, fit: BoxFit.cover),
+        ),
+      );
+    }
+
+    // Dynamic: no AspectRatio wrapper — an explicit `width` with no
+    // `height` on Image.network makes it size itself to the image's own
+    // aspect ratio scaled to the card's width, once the image loads.
+    return Container(
+      color: colors.placeholder,
+      child: Image.network(mimo.coverImageUrl!, width: double.infinity, fit: BoxFit.fitWidth),
+    );
   }
 
   @override
@@ -55,19 +91,14 @@ class MimoCard extends StatelessWidget {
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
+            // The masonry grid gives this card an unbounded height (that's
+            // how it lets each card be its own natural height) — mainAxisSize
+            // must be `min` here or a `max` Column would try to fill that
+            // unbounded space and blow up.
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              AspectRatio(
-                aspectRatio: 1,
-                child: Container(
-                  width: double.infinity,
-                  color: colors.placeholder,
-                  alignment: Alignment.center,
-                  child: mimo.coverImageUrl == null
-                      ? Icon(Icons.image_outlined, color: colors.inkFaint.withValues(alpha: 0.8), size: 30)
-                      : Image.network(mimo.coverImageUrl!, fit: BoxFit.cover),
-                ),
-              ),
+              _cover(colors),
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                 child: Column(
