@@ -15,6 +15,13 @@ jobs:
         with:
           channel: stable
           cache: true
+      # pubspec.yaml declares .env as an asset (flutter_dotenv) — it's
+      # gitignored (real Supabase keys), so analyze/test/build all need
+      # *something* there or `flutter analyze` flags the missing asset
+      # file as an error. isOptional: true in main.dart means the app
+      # just runs unconfigured with these placeholder values; nothing
+      # here needs to actually reach Supabase.
+      - run: cp .env.example .env
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
@@ -37,6 +44,13 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      # pubspec.yaml declares .env as an asset (flutter_dotenv) — it's
+      # gitignored (real Supabase keys), so analyze/test/build all need
+      # *something* there or `flutter analyze` flags the missing asset
+      # file as an error. isOptional: true in main.dart means the app
+      # just runs unconfigured with these placeholder values; nothing
+      # here needs to actually reach Supabase.
+      - run: cp .env.example .env
       - run: flutter pub get
       - run: flutter build apk --release
 
@@ -49,5 +63,12 @@ jobs:
         with:
           channel: stable
           cache: true
+      # pubspec.yaml declares .env as an asset (flutter_dotenv) — it's
+      # gitignored (real Supabase keys), so analyze/test/build all need
+      # *something* there or `flutter analyze` flags the missing asset
+      # file as an error. isOptional: true in main.dart means the app
+      # just runs unconfigured with these placeholder values; nothing
+      # here needs to actually reach Supabase.
+      - run: cp .env.example .env
       - run: flutter pub get
       - run: flutter build windows --release
