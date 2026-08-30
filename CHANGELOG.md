@@ -4,6 +4,15 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.35-alpha] - 2026-08-30
+
+### Fixed
+- Card de pasta compartilhada ainda com "barriga" — o selo de avatares
+  sobreposto na capa continuava mudando a altura efetiva do card e
+  ficava estranho por cima da foto. Movido de volta pro rodapé, mas
+  agora na mesma linha da contagem de mimos (não numa linha própria) —
+  sem variar altura entre cards e sem ficar em cima da imagem.
+
 ## [0.0.34-alpha] - 2026-08-30
 
 ### Fixed
