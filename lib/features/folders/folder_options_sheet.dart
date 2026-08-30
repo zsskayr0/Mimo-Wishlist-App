@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
+import '../../core/widgets/floating_dialog.dart';
 import '../../data/models/folder.dart';
 import '../../data/models/folder_member.dart';
 import '../../data/repositories/folder_repository.dart';
@@ -23,16 +25,32 @@ class FolderOptionsSheet extends StatefulWidget {
     super.key,
     required this.folder,
     required this.isOwner,
+    this.isDesktop = false,
   });
 
   final Folder folder;
   final bool isOwner;
+
+  /// Set by [show] only — swaps the outer chrome (rounded-all-corners
+  /// centered card, no drag handle, fixed width) without touching the
+  /// content, matching every other sheet's desktop treatment.
+  final bool isDesktop;
 
   static Future<String?> show(
     BuildContext context, {
     required Folder folder,
     required bool isOwner,
   }) {
+    if (MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width)) {
+      return showFloatingDialog<String>(
+        context,
+        builder: (_) => FolderOptionsSheet(
+          folder: folder,
+          isOwner: isOwner,
+          isDesktop: true,
+        ),
+      );
+    }
     return showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -211,6 +229,114 @@ class _FolderOptionsSheetState extends State<FolderOptionsSheet> {
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // A drag handle implies "swipe down to dismiss", which only
+        // makes sense for the bottom-sheet presentation.
+        if (!widget.isDesktop)
+          Center(
+            child: Container(
+              width: 38,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: colors.placeholder,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+        const Text(
+          'Opções da pasta',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+        Flexible(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'QUEM TEM ACESSO',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                    color: colors.inkFaint,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (_members == null)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                else
+                  for (final member in _roster)
+                    _MemberRow(
+                      member: member,
+                      colors: colors,
+                      onTap: widget.isOwner && !member.isOwner
+                          ? () => _openMemberActions(member)
+                          : null,
+                    ),
+                const SizedBox(height: 8),
+                if (widget.isOwner) ...[
+                  _ActionRow(
+                    icon: Icons.person_add_alt_outlined,
+                    label: 'Convidar mais gente',
+                    onTap: _invite,
+                    colors: colors,
+                  ),
+                  _ActionRow(
+                    icon: Icons.edit_outlined,
+                    label: 'Editar pasta',
+                    onTap: _editFolder,
+                    colors: colors,
+                  ),
+                  _ActionRow(
+                    icon: Icons.delete_outline,
+                    label: 'Excluir pasta',
+                    onTap: _isBusy ? null : _confirmDelete,
+                    colors: colors,
+                    destructive: true,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (widget.isDesktop) {
+      // showFloatingDialog already centers this and handles tap-outside
+      // — just the sized card itself here. A real `Material` ancestor
+      // (not just a decorated Container) — every InkWell/Ink inside
+      // (member rows, action rows...) throws "No Material widget found"
+      // the moment it builds without one.
+      return SizedBox(
+        width: 420,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.86,
+          ),
+          child: Material(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(20),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
+              child: content,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -224,85 +350,7 @@ class _FolderOptionsSheetState extends State<FolderOptionsSheet> {
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 38,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: colors.placeholder,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-            ),
-            const Text(
-              'Opções da pasta',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'QUEM TEM ACESSO',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                        color: colors.inkFaint,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (_members == null)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                    else
-                      for (final member in _roster)
-                        _MemberRow(
-                          member: member,
-                          colors: colors,
-                          onTap: widget.isOwner && !member.isOwner
-                              ? () => _openMemberActions(member)
-                              : null,
-                        ),
-                    const SizedBox(height: 8),
-                    if (widget.isOwner) ...[
-                      _ActionRow(
-                        icon: Icons.person_add_alt_outlined,
-                        label: 'Convidar mais gente',
-                        onTap: _invite,
-                        colors: colors,
-                      ),
-                      _ActionRow(
-                        icon: Icons.edit_outlined,
-                        label: 'Editar pasta',
-                        onTap: _editFolder,
-                        colors: colors,
-                      ),
-                      _ActionRow(
-                        icon: Icons.delete_outline,
-                        label: 'Excluir pasta',
-                        onTap: _isBusy ? null : _confirmDelete,
-                        colors: colors,
-                        destructive: true,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+        child: content,
       ),
     );
   }

@@ -401,6 +401,19 @@ class FolderCard extends StatelessWidget {
                         child: const OptionsGlyph(),
                       ),
                     ),
+                  // On the cover, not stacked below the text — a shared
+                  // folder's card must stay exactly as tall as any other
+                  // one (the grid here is a real GridView with one fixed
+                  // cell height per row, not Masonry; an extra row for
+                  // this used to force every OTHER card's aspect ratio to
+                  // reserve dead space for a badge most of them don't
+                  // have).
+                  if (folder.isShared && folder.memberAvatarUrls.isNotEmpty)
+                    Positioned(
+                      left: 8,
+                      bottom: 8,
+                      child: FolderAvatarStack(urls: folder.memberAvatarUrls),
+                    ),
                 ],
               ),
               Padding(
@@ -427,17 +440,6 @@ class FolderCard extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (folder.isShared &&
-                        folder.memberAvatarUrls.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          FolderAvatarStack(urls: folder.memberAvatarUrls),
-                          const SizedBox(width: 6),
-                          const Flexible(child: _SharedBadge()),
-                        ],
-                      ),
-                    ],
                   ],
                 ),
               ),

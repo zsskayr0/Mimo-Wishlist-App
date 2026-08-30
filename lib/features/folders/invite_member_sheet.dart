@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
+import '../../core/widgets/floating_dialog.dart';
 import '../../core/widgets/gradient_button.dart';
 import '../../data/models/user_profile.dart';
 import '../../data/repositories/folder_repository.dart';
@@ -16,6 +18,7 @@ class InviteMemberSheet extends StatefulWidget {
     super.key,
     required this.folderId,
     this.existingMemberIds = const {},
+    this.isDesktop = false,
   });
 
   final String folderId;
@@ -23,11 +26,26 @@ class InviteMemberSheet extends StatefulWidget {
   /// Already-in-the-folder user ids, filtered out of search results.
   final Set<String> existingMemberIds;
 
+  /// Set by [show] only — swaps the outer chrome (rounded-all-corners
+  /// centered card, no drag handle, fixed width) without touching the
+  /// form, matching every other sheet's desktop treatment.
+  final bool isDesktop;
+
   static Future<bool?> show(
     BuildContext context, {
     required String folderId,
     Set<String> existingMemberIds = const {},
   }) {
+    if (MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width)) {
+      return showFloatingDialog<bool>(
+        context,
+        builder: (_) => InviteMemberSheet(
+          folderId: folderId,
+          existingMemberIds: existingMemberIds,
+          isDesktop: true,
+        ),
+      );
+    }
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -130,6 +148,154 @@ class _InviteMemberSheetState extends State<InviteMemberSheet> {
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
+    final form = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // A drag handle implies "swipe down to dismiss", which only
+        // makes sense for the bottom-sheet presentation.
+        if (!widget.isDesktop)
+          Center(
+            child: Container(
+              width: 38,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: colors.placeholder,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+        const Text(
+          'Convidar pra pasta',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+        if (_selected != null)
+          _SelectedChip(
+            profile: _selected!,
+            colors: colors,
+            onClear: () => setState(() => _selected = null),
+          )
+        else ...[
+          TextField(
+            controller: _searchController,
+            autofocus: true,
+            onChanged: _onSearchChanged,
+            decoration: const InputDecoration(
+              labelText: 'Nome de usuário',
+              prefixText: '@',
+            ),
+          ),
+          const SizedBox(height: 8),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_isSearching && _results.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  else if (_searchController.text.trim().isNotEmpty &&
+                      _results.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        'Ninguém encontrado.',
+                        style: TextStyle(color: colors.inkSoft),
+                      ),
+                    )
+                  else
+                    for (final profile in _results)
+                      _SearchResultRow(
+                        profile: profile,
+                        colors: colors,
+                        onTap: () => _select(profile),
+                      ),
+                ],
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 16),
+        Text(
+          'Papel',
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.bold,
+            color: colors.inkFaint,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _RoleChip(
+                label: 'Visualizador',
+                selected: _role == 'visualizador',
+                onTap: () => setState(() => _role = 'visualizador'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _RoleChip(
+                label: 'Editor',
+                selected: _role == 'editor',
+                onTap: () => setState(() => _role = 'editor'),
+              ),
+            ),
+          ],
+        ),
+        if (_errorMessage != null) ...[
+          const SizedBox(height: 12),
+          Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+        ],
+        const SizedBox(height: 20),
+        GradientButton(
+          onPressed: _isSaving ? null : _invite,
+          child: _isSaving
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Convidar'),
+        ),
+      ],
+    );
+
+    if (widget.isDesktop) {
+      // showFloatingDialog already centers this and handles tap-outside
+      // — just the sized card itself here. A real `Material` ancestor
+      // (not just a decorated Container) — every InkWell/Ink inside
+      // (GradientButton, the role chips, search rows...) throws "No
+      // Material widget found" the moment it builds without one.
+      return SizedBox(
+        width: 420,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.86,
+          ),
+          child: Material(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(20),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
+              child: form,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -143,125 +309,7 @@ class _InviteMemberSheetState extends State<InviteMemberSheet> {
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 38,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: colors.placeholder,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-            ),
-            const Text(
-              'Convidar pra pasta',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            if (_selected != null)
-              _SelectedChip(
-                profile: _selected!,
-                colors: colors,
-                onClear: () => setState(() => _selected = null),
-              )
-            else ...[
-              TextField(
-                controller: _searchController,
-                autofocus: true,
-                onChanged: _onSearchChanged,
-                decoration: const InputDecoration(
-                  labelText: 'Nome de usuário',
-                  prefixText: '@',
-                ),
-              ),
-              const SizedBox(height: 8),
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (_isSearching && _results.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      else if (_searchController.text.trim().isNotEmpty &&
-                          _results.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Text(
-                            'Ninguém encontrado.',
-                            style: TextStyle(color: colors.inkSoft),
-                          ),
-                        )
-                      else
-                        for (final profile in _results)
-                          _SearchResultRow(
-                            profile: profile,
-                            colors: colors,
-                            onTap: () => _select(profile),
-                          ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            Text(
-              'Papel',
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.bold,
-                color: colors.inkFaint,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _RoleChip(
-                    label: 'Visualizador',
-                    selected: _role == 'visualizador',
-                    onTap: () => setState(() => _role = 'visualizador'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _RoleChip(
-                    label: 'Editor',
-                    selected: _role == 'editor',
-                    onTap: () => setState(() => _role = 'editor'),
-                  ),
-                ),
-              ],
-            ),
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 12),
-              Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
-            ],
-            const SizedBox(height: 20),
-            GradientButton(
-              onPressed: _isSaving ? null : _invite,
-              child: _isSaving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Convidar'),
-            ),
-          ],
-        ),
+        child: form,
       ),
     );
   }

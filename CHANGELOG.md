@@ -4,6 +4,19 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.34-alpha] - 2026-08-30
+
+### Fixed
+- Card de pasta compartilhada com "barriga" (vão em branco embaixo) —
+  o selo de avatares empurrava o rodapé pra baixo só nos cards
+  compartilhados, obrigando a proporção do grid a reservar espaço extra
+  em todo mundo. Selo movido pra cima da própria capa (sobreposto),
+  então todo card tem exatamente a mesma altura e a proporção do grid
+  ficou bem mais justa.
+- "Editar pasta", "Convidar pra pasta" e "Opções da pasta" agora abrem
+  como card flutuante centralizado no desktop, igual aos outros menus
+  do app — antes eram sempre um bottom sheet, mesmo em tela larga.
+
 ## [0.0.33-alpha] - 2026-08-30
 
 ### Fixed

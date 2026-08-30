@@ -2,7 +2,9 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
+import '../../core/widgets/floating_dialog.dart';
 import '../../core/widgets/gradient_button.dart';
 import '../../core/widgets/image_picker_sheet.dart';
 import '../../data/models/folder.dart';
@@ -23,13 +25,29 @@ const _folderPalette = [
 /// a cover-photo picker appears, and saving updates that folder instead
 /// of creating a new one.
 class CreateFolderSheet extends StatefulWidget {
-  const CreateFolderSheet({super.key, this.editingFolder});
+  const CreateFolderSheet({
+    super.key,
+    this.editingFolder,
+    this.isDesktop = false,
+  });
 
   final Folder? editingFolder;
+
+  /// Set by [show] only — swaps the outer chrome (rounded-all-corners
+  /// centered card, no drag handle, fixed width) without touching the
+  /// form, matching every other sheet's desktop treatment.
+  final bool isDesktop;
 
   /// Returns the created/updated [Folder] (not just a success flag) so
   /// the caller can show it right away instead of waiting on a refetch.
   static Future<Folder?> show(BuildContext context, {Folder? editingFolder}) {
+    if (MimoBreakpoints.isDesktop(MediaQuery.of(context).size.width)) {
+      return showFloatingDialog<Folder>(
+        context,
+        builder: (_) =>
+            CreateFolderSheet(editingFolder: editingFolder, isDesktop: true),
+      );
+    }
     return showModalBottomSheet<Folder>(
       context: context,
       isScrollControlled: true,
@@ -149,6 +167,192 @@ class _CreateFolderSheetState extends State<CreateFolderSheet> {
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
     final hasCover = _coverBytes != null || _existingCoverUrl != null;
+    final form = SingleChildScrollView(
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // A drag handle implies "swipe down to dismiss", which
+            // only makes sense for the bottom-sheet presentation.
+            if (!widget.isDesktop)
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: colors.placeholder,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            Text(
+              _isEditing ? 'Editar pasta' : 'Nova pasta',
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            if (_isEditing) ...[
+              Text(
+                'Capa',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.bold,
+                  color: colors.inkFaint,
+                ),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: _pickCover,
+                child: Container(
+                  height: 110,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: colors.placeholder,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: colors.border),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: !hasCover
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_photo_alternate_outlined,
+                              size: 26,
+                              color: colors.inkFaint,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Adicionar foto de capa',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: colors.inkFaint,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            _coverBytes != null
+                                ? Image.memory(_coverBytes!, fit: BoxFit.cover)
+                                : Image.network(
+                                    _existingCoverUrl!,
+                                    fit: BoxFit.cover,
+                                  ),
+                            Positioned(
+                              right: 8,
+                              bottom: 8,
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.edit,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            TextFormField(
+              controller: _nameController,
+              autofocus: !_isEditing,
+              decoration: const InputDecoration(labelText: 'Nome'),
+              validator: (value) => (value == null || value.trim().isEmpty)
+                  ? 'Dá um nome pra pasta'
+                  : null,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Cor',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.bold,
+                color: colors.inkFaint,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                for (final hex in _folderPalette)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedColor = hex),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: _colorFromHex(hex),
+                          shape: BoxShape.circle,
+                          border: _selectedColor == hex
+                              ? Border.all(color: colors.ink, width: 2.5)
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 12),
+              Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+            ],
+            const SizedBox(height: 20),
+            GradientButton(
+              onPressed: _isSaving ? null : _save,
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(_isEditing ? 'Salvar alterações' : 'Criar pasta'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (widget.isDesktop) {
+      // showFloatingDialog already centers this and handles tap-outside
+      // — just the sized card itself here. A real `Material` ancestor
+      // (not just a decorated Container) — every InkWell/Ink inside
+      // (GradientButton, the color swatches...) throws "No Material
+      // widget found" the moment it builds without one.
+      return SizedBox(
+        width: 420,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.86,
+          ),
+          child: Material(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(20),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
+              child: form,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -162,172 +366,7 @@ class _CreateFolderSheetState extends State<CreateFolderSheet> {
           maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 38,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: colors.placeholder,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
-                Text(
-                  _isEditing ? 'Editar pasta' : 'Nova pasta',
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (_isEditing) ...[
-                  Text(
-                    'Capa',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.bold,
-                      color: colors.inkFaint,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: _pickCover,
-                    child: Container(
-                      height: 110,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: colors.placeholder,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: colors.border),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: !hasCover
-                          ? Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.add_photo_alternate_outlined,
-                                  size: 26,
-                                  color: colors.inkFaint,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Adicionar foto de capa',
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    color: colors.inkFaint,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                _coverBytes != null
-                                    ? Image.memory(
-                                        _coverBytes!,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : Image.network(
-                                        _existingCoverUrl!,
-                                        fit: BoxFit.cover,
-                                      ),
-                                Positioned(
-                                  right: 8,
-                                  bottom: 8,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.black54,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.edit,
-                                      size: 14,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                TextFormField(
-                  controller: _nameController,
-                  autofocus: !_isEditing,
-                  decoration: const InputDecoration(labelText: 'Nome'),
-                  validator: (value) => (value == null || value.trim().isEmpty)
-                      ? 'Dá um nome pra pasta'
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Cor',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.bold,
-                    color: colors.inkFaint,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    for (final hex in _folderPalette)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedColor = hex),
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: _colorFromHex(hex),
-                              shape: BoxShape.circle,
-                              border: _selectedColor == hex
-                                  ? Border.all(color: colors.ink, width: 2.5)
-                                  : null,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                if (_errorMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                ],
-                const SizedBox(height: 20),
-                GradientButton(
-                  onPressed: _isSaving ? null : _save,
-                  child: _isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(_isEditing ? 'Salvar alterações' : 'Criar pasta'),
-                ),
-              ],
-            ),
-          ),
-        ),
+        child: form,
       ),
     );
   }
