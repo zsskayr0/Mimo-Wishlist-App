@@ -7,6 +7,7 @@ import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
 import '../../core/widgets/floating_dialog.dart';
 import '../../core/widgets/gradient_button.dart';
+import '../../core/widgets/options_glyph.dart';
 import '../../data/models/mimo.dart';
 import '../../data/repositories/folder_repository.dart';
 import '../../data/repositories/mimo_repository.dart';
@@ -14,7 +15,11 @@ import '../capture/quick_capture_sheet.dart';
 import '../folders/folder_picker_sheet.dart';
 
 class MimoDetailScreen extends StatefulWidget {
-  const MimoDetailScreen({super.key, required this.mimo, this.isDesktop = false});
+  const MimoDetailScreen({
+    super.key,
+    required this.mimo,
+    this.isDesktop = false,
+  });
 
   final Mimo mimo;
 
@@ -92,7 +97,9 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && mounted) {
-      messenger.showSnackBar(const SnackBar(content: Text('Não deu pra abrir o link.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Não deu pra abrir o link.')),
+      );
     }
   }
 
@@ -116,7 +123,8 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
     if (!mounted) return;
     await MimoRepository().duplicateToFolder(_mimo, folderId);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mimo duplicado.')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Mimo duplicado.')));
   }
 
   Future<void> _confirmDelete() async {
@@ -124,9 +132,14 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Excluir mimo?'),
-        content: Text('"${_mimo.title}" será removido. Essa ação não pode ser desfeita.'),
+        content: Text(
+          '"${_mimo.title}" será removido. Essa ação não pode ser desfeita.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Excluir', style: TextStyle(color: Colors.red)),
@@ -144,7 +157,10 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
   String _formatPrice(double price) {
     final fixed = price.toStringAsFixed(2).replaceAll('.', ',');
     final parts = fixed.split(',');
-    final intPart = parts[0].replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
+    final intPart = parts[0].replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (m) => '.',
+    );
     return 'R\$ $intPart,${parts[1]}';
   }
 
@@ -171,13 +187,20 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
           const Spacer(),
           Text(
             'DETALHE DO MIMO',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.6, color: colors.inkFaint),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.6,
+              color: colors.inkFaint,
+            ),
           ),
           const Spacer(),
           PopupMenuButton<String>(
             tooltip: 'Opções',
             padding: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(11),
+            ),
             onSelected: (value) {
               if (value == 'edit') _edit();
               if (value == 'duplicate') _duplicate();
@@ -185,25 +208,19 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
             },
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'edit', child: Text('Editar mimo')),
-              const PopupMenuItem(value: 'duplicate', child: Text('Duplicar em outra pasta')),
+              const PopupMenuItem(
+                value: 'duplicate',
+                child: Text('Duplicar em outra pasta'),
+              ),
               const PopupMenuItem(
                 value: 'delete',
-                child: Text('Excluir mimo', style: TextStyle(color: Colors.red)),
+                child: Text(
+                  'Excluir mimo',
+                  style: TextStyle(color: Colors.red),
+                ),
               ),
             ],
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: colors.surface,
-                border: Border.all(color: colors.border),
-                borderRadius: BorderRadius.circular(11),
-                boxShadow: [
-                  BoxShadow(color: colors.ink.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2)),
-                ],
-              ),
-              child: Icon(Icons.more_horiz, size: 18, color: colors.ink),
-            ),
+            child: const OptionsGlyph(),
           ),
         ],
       ),
@@ -214,7 +231,10 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
     return AspectRatio(
       aspectRatio: 1.3,
       child: Container(
-        decoration: BoxDecoration(color: colors.placeholder, borderRadius: BorderRadius.circular(16)),
+        decoration: BoxDecoration(
+          color: colors.placeholder,
+          borderRadius: BorderRadius.circular(16),
+        ),
         alignment: Alignment.center,
         child: _mimo.coverImageUrl == null
             ? Icon(Icons.image_outlined, size: 46, color: colors.inkFaint)
@@ -230,14 +250,23 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(_mimo.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        Text(
+          _mimo.title,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 6),
         Row(
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
             if (_mimo.price != null)
-              Text(_formatPrice(_mimo.price!), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              Text(
+                _formatPrice(_mimo.price!),
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             if (_mimo.storeDomain != null) ...[
               const SizedBox(width: 10),
               GestureDetector(
@@ -247,10 +276,18 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
                   children: [
                     Text(
                       _mimo.storeDomain!,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: MimoColors.gradientA),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: MimoColors.gradientA,
+                      ),
                     ),
                     const SizedBox(width: 3),
-                    const Icon(Icons.north_east, size: 12, color: MimoColors.gradientA),
+                    const Icon(
+                      Icons.north_east,
+                      size: 12,
+                      color: MimoColors.gradientA,
+                    ),
                   ],
                 ),
               ),
@@ -267,12 +304,20 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
       runSpacing: 8,
       children: [
         _Pill(
-          label: _mimo.isUnorganized ? 'Desorganizado' : 'Pasta: ${_mimo.folderName ?? '—'}',
+          label: _mimo.isUnorganized
+              ? 'Desorganizado'
+              : 'Pasta: ${_mimo.folderName ?? '—'}',
           color: _mimo.isUnorganized ? colors.tagGray : _folderColor(colors),
-          background: _mimo.isUnorganized ? colors.tagGrayBg : _folderColor(colors).withValues(alpha: 0.16),
+          background: _mimo.isUnorganized
+              ? colors.tagGrayBg
+              : _folderColor(colors).withValues(alpha: 0.16),
         ),
         for (final tag in _mimo.tags)
-          _Pill(label: '#${tag.name}', color: colors.tagPlum, background: colors.tagPlumBg),
+          _Pill(
+            label: '#${tag.name}',
+            color: colors.tagPlum,
+            background: colors.tagPlumBg,
+          ),
       ],
     );
   }
@@ -282,7 +327,11 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
       label: 'Prioridade',
       padding: padding,
       child: _Segmented(
-        options: const [('baixa', 'Baixa'), ('media', 'Média'), ('alta', 'Alta')],
+        options: const [
+          ('baixa', 'Baixa'),
+          ('media', 'Média'),
+          ('alta', 'Alta'),
+        ],
         value: _mimo.priority,
         onChanged: _setPriority,
       ),
@@ -294,7 +343,11 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
       label: 'Status de compra',
       padding: padding,
       child: _Segmented(
-        options: const [('desejado', 'Desejado'), ('comprado', 'Comprado'), ('arquivado', 'Arquivado')],
+        options: const [
+          ('desejado', 'Desejado'),
+          ('comprado', 'Comprado'),
+          ('arquivado', 'Arquivado'),
+        ],
         value: _mimo.purchaseStatus,
         onChanged: _setStatus,
       ),
@@ -315,7 +368,11 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
           isCollapsed: true,
           border: InputBorder.none,
           hintText: 'Adicione uma nota...',
-          hintStyle: TextStyle(fontSize: 14, color: colors.inkFaint, fontWeight: FontWeight.w300),
+          hintStyle: TextStyle(
+            fontSize: 14,
+            color: colors.inkFaint,
+            fontWeight: FontWeight.w300,
+          ),
         ),
       ),
     );
@@ -348,7 +405,10 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _header(colors),
-                  Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: _cover(colors)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _cover(colors),
+                  ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                     child: Column(
@@ -372,7 +432,12 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
           ),
         ),
         if (_mimo.originalUrl != null)
-          Positioned(left: 20, right: 20, bottom: 20, child: _openStoreButton()),
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 20,
+            child: _openStoreButton(),
+          ),
       ],
     );
   }
@@ -437,7 +502,9 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
     if (widget.isDesktop) {
       // showFloatingDialog already centers this and handles tap-outside.
       return ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.86),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.86,
+        ),
         child: SizedBox(
           width: 820,
           child: Material(
@@ -481,7 +548,11 @@ class _IconButton extends StatelessWidget {
 }
 
 class _Pill extends StatelessWidget {
-  const _Pill({required this.label, required this.color, required this.background});
+  const _Pill({
+    required this.label,
+    required this.color,
+    required this.background,
+  });
 
   final String label;
   final Color color;
@@ -491,8 +562,18 @@ class _Pill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(999)),
-      child: Text(label, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: color)),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12.5,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
     );
   }
 }
@@ -527,7 +608,12 @@ class _Block extends StatelessWidget {
           children: [
             Text(
               label.toUpperCase(),
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: colors.inkFaint),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+                color: colors.inkFaint,
+              ),
             ),
             const SizedBox(height: 10),
             child,
@@ -539,7 +625,11 @@ class _Block extends StatelessWidget {
 }
 
 class _Segmented extends StatelessWidget {
-  const _Segmented({required this.options, required this.value, required this.onChanged});
+  const _Segmented({
+    required this.options,
+    required this.value,
+    required this.onChanged,
+  });
 
   final List<(String, String)> options;
   final String value;
@@ -561,7 +651,9 @@ class _Segmented extends StatelessWidget {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: value == option.$1 ? colors.ink : Colors.transparent,
-                  border: Border.all(color: value == option.$1 ? colors.ink : colors.border),
+                  border: Border.all(
+                    color: value == option.$1 ? colors.ink : colors.border,
+                  ),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(

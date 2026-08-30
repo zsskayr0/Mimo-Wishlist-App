@@ -18,7 +18,13 @@ import '../../../data/models/mimo.dart';
 /// than the tallest one on screen; the masonry grid lets each card be
 /// exactly as tall as it needs to be.
 class MimoCard extends StatelessWidget {
-  const MimoCard({super.key, required this.mimo, this.onTap, this.dynamicCover = false});
+  const MimoCard({
+    super.key,
+    required this.mimo,
+    this.onTap,
+    this.dynamicCover = false,
+    this.ownerAvatarUrl,
+  });
 
   final Mimo mimo;
   final VoidCallback? onTap;
@@ -26,6 +32,11 @@ class MimoCard extends StatelessWidget {
   /// When true and the mimo has a cover, the image keeps its real aspect
   /// ratio instead of being forced into a 1:1 box.
   final bool dynamicCover;
+
+  /// Small avatar badge over the cover's corner — who added this mimo,
+  /// shown only by callers that pass it (FolderDetailScreen, for a
+  /// shared folder, and only for mimos that aren't the viewer's own).
+  final String? ownerAvatarUrl;
 
   String _formatPrice(double price) {
     final fixed = price.toStringAsFixed(2).replaceAll('.', ',');
@@ -57,7 +68,11 @@ class MimoCard extends StatelessWidget {
           color: colors.placeholder,
           alignment: Alignment.center,
           child: !hasImage
-              ? Icon(Icons.image_outlined, color: colors.inkFaint.withValues(alpha: 0.8), size: 30)
+              ? Icon(
+                  Icons.image_outlined,
+                  color: colors.inkFaint.withValues(alpha: 0.8),
+                  size: 30,
+                )
               : Image.network(mimo.coverImageUrl!, fit: BoxFit.cover),
         ),
       );
@@ -68,7 +83,11 @@ class MimoCard extends StatelessWidget {
     // aspect ratio scaled to the card's width, once the image loads.
     return Container(
       color: colors.placeholder,
-      child: Image.network(mimo.coverImageUrl!, width: double.infinity, fit: BoxFit.fitWidth),
+      child: Image.network(
+        mimo.coverImageUrl!,
+        width: double.infinity,
+        fit: BoxFit.fitWidth,
+      ),
     );
   }
 
@@ -97,7 +116,33 @@ class MimoCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _cover(colors),
+              Stack(
+                children: [
+                  _cover(colors),
+                  if (ownerAvatarUrl != null)
+                    Positioned(
+                      left: 8,
+                      top: 8,
+                      child: ClipOval(
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: colors.placeholder,
+                            border: Border.all(
+                              color: colors.surface,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Image.network(
+                            ownerAvatarUrl!,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                 child: Column(
@@ -108,20 +153,32 @@ class MimoCard extends StatelessWidget {
                       mimo.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, height: 1.25),
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        height: 1.25,
+                      ),
                     ),
                     if (mimo.price != null) ...[
                       const SizedBox(height: 4),
                       Text(
                         _formatPrice(mimo.price!),
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.inkSoft),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: colors.inkSoft,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 6),
                     _StatusPill(
-                      label: mimo.isUnorganized ? 'Desorganizado' : 'Pasta: ${mimo.folderName ?? '—'}',
+                      label: mimo.isUnorganized
+                          ? 'Desorganizado'
+                          : 'Pasta: ${mimo.folderName ?? '—'}',
                       color: mimo.isUnorganized ? colors.tagGray : folderColor,
-                      background: mimo.isUnorganized ? colors.tagGrayBg : folderColor.withValues(alpha: 0.16),
+                      background: mimo.isUnorganized
+                          ? colors.tagGrayBg
+                          : folderColor.withValues(alpha: 0.16),
                     ),
                   ],
                 ),
@@ -135,7 +192,11 @@ class MimoCard extends StatelessWidget {
 }
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label, required this.color, required this.background});
+  const _StatusPill({
+    required this.label,
+    required this.color,
+    required this.background,
+  });
 
   final String label;
   final Color color;
@@ -145,10 +206,17 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),

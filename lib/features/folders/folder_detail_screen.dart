@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/layout/breakpoints.dart';
 import '../../core/theme/mimo_colors.dart';
+import '../../core/widgets/options_glyph.dart';
 import '../../data/models/folder.dart';
 import '../../data/models/folder_member.dart';
 import '../../data/models/mimo.dart';
@@ -14,7 +15,7 @@ import '../../data/repositories/tag_repository.dart';
 import '../feed/mimo_filter_sheet.dart';
 import '../feed/widgets/mimo_collection_view.dart';
 import '../mimo_detail/mimo_detail_screen.dart';
-import 'invite_member_sheet.dart';
+import 'folder_options_sheet.dart';
 
 class FolderDetailScreen extends StatefulWidget {
   const FolderDetailScreen({super.key, required this.folder});
@@ -34,13 +35,34 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   Object? _loadError;
   List<FolderMember> _members = const [];
 
+  /// Mutable so FolderOptionsSheet's edits (rename/recolor/re-cover) show
+  /// up in the header right away — starts from the folder the caller
+  /// navigated in with, refetched after that sheet closes.
+  late Folder _folder = widget.folder;
+
   late Future<List<MimoTag>> _tagsFuture;
+  final _folderRepository = FolderRepository();
   final _searchController = TextEditingController();
 
   MimoFilters _filters = const MimoFilters();
 
   bool get _isOwner =>
-      widget.folder.ownerId == Supabase.instance.client.auth.currentUser?.id;
+      _folder.ownerId == Supabase.instance.client.auth.currentUser?.id;
+
+  /// Owner first (synthetic — never a real folder_members row, see
+  /// FolderMember), then the fetched editors/visualizadores — used both
+  /// for the member-filter chip row and MimoFilterSheet's owner filter,
+  /// so the folder's owner is filterable too, not just editors/viewers.
+  List<FolderMember> get _roster => [
+    FolderMember(
+      userId: _folder.ownerId,
+      username: _folder.ownerUsername ?? '—',
+      displayName: _folder.ownerDisplayName,
+      avatarUrl: _folder.ownerAvatarUrl,
+      role: 'dono',
+    ),
+    ..._members,
+  ];
 
   @override
   void initState() {
@@ -57,22 +79,34 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   }
 
   Future<void> _loadMembers() async {
-    final members = await FolderRepository().fetchMembers(widget.folder.id);
+    final members = await _folderRepository.fetchMembers(_folder.id);
     if (mounted) setState(() => _members = members);
   }
 
-  Future<void> _openInvite() async {
-    final invited = await InviteMemberSheet.show(
+  Future<void> _openFolderOptions() async {
+    final signal = await FolderOptionsSheet.show(
       context,
-      folderId: widget.folder.id,
-      existingMemberIds: _members.map((m) => m.userId).toSet(),
+      folder: _folder,
+      isOwner: _isOwner,
     );
-    if (invited == true) _loadMembers();
+    if (!mounted) return;
+    if (signal == 'left') {
+      Navigator.of(context).pop();
+      return;
+    }
+    _loadMembers();
+    try {
+      final fresh = await _folderRepository.fetchFolder(_folder.id);
+      if (mounted) setState(() => _folder = fresh);
+    } catch (_) {
+      // Keep showing the last-known folder — a failed refresh here
+      // shouldn't be disruptive.
+    }
   }
 
   Future<void> _loadMimos() async {
     try {
-      final result = await MimoRepository().fetchByFolder(widget.folder.id);
+      final result = await MimoRepository().fetchByFolder(_folder.id);
       if (!mounted) return;
       setState(() {
         _mimos = result;
@@ -111,7 +145,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     try {
       final id = await MimoRepository().createMimo(
         title: title,
-        folderId: widget.folder.id,
+        folderId: _folder.id,
       );
       final created = await MimoRepository().fetchById(id);
       if (created != null && mounted) {
@@ -159,14 +193,13 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       folders: const [],
       tags: tags,
       stores: stores,
-      members: _members,
+      members: _roster,
     );
     if (result != null) setState(() => _filters = result);
   }
 
-  Color get _folderColor => Color(
-    int.parse('FF${widget.folder.color.replaceFirst('#', '')}', radix: 16),
-  );
+  Color get _folderColor =>
+      Color(int.parse('FF${_folder.color.replaceFirst('#', '')}', radix: 16));
 
   @override
   Widget build(BuildContext context) {
@@ -193,7 +226,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
             ),
             Expanded(
               child: Text(
-                widget.folder.name,
+                _folder.name,
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
@@ -201,12 +234,14 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
           ],
         ),
         actions: [
-          if (_isOwner)
-            IconButton(
-              icon: const Icon(Icons.person_add_alt_outlined),
-              tooltip: 'Convidar',
-              onPressed: _openInvite,
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(11),
+              onTap: _openFolderOptions,
+              child: const OptionsGlyph(),
             ),
+          ),
         ],
       ),
       body: Column(
@@ -279,12 +314,12 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                 height: 30,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: _members.length,
+                  itemCount: _roster.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 8),
                   itemBuilder: (context, index) => _MemberChip(
-                    member: _members[index],
-                    selected: _filters.ownerId == _members[index].userId,
-                    onTap: () => _toggleOwnerFilter(_members[index].userId),
+                    member: _roster[index],
+                    selected: _filters.ownerId == _roster[index].userId,
+                    onTap: () => _toggleOwnerFilter(_roster[index].userId),
                   ),
                 ),
               ),
@@ -346,7 +381,19 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       onPriorityChanged: _onPriorityChanged,
       onStatusChanged: _onStatusChanged,
       onCreateInline: _createInline,
+      ownerAvatarOf: _folder.isShared ? _ownerAvatarOf : null,
     );
+  }
+
+  /// Only for mimos that aren't the viewer's own — no point badging your
+  /// own stuff ("a propriedade de quem é o mimo na pasta compartilhada").
+  String? _ownerAvatarOf(Mimo mimo) {
+    final myId = Supabase.instance.client.auth.currentUser?.id;
+    if (mimo.ownerId == myId) return null;
+    for (final member in _roster) {
+      if (member.userId == mimo.ownerId) return member.avatarUrl;
+    }
+    return null;
   }
 }
 
@@ -359,10 +406,20 @@ class _MemberChip extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
 
+  String get _roleLabel {
+    switch (member.role) {
+      case 'dono':
+        return 'dono';
+      case 'editor':
+        return 'editor';
+      default:
+        return 'visualizador';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
-    final isEditor = member.role == 'editor';
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
@@ -387,7 +444,7 @@ class _MemberChip extends StatelessWidget {
             ),
             const SizedBox(width: 5),
             Text(
-              isEditor ? 'editor' : 'visualizador',
+              _roleLabel,
               style: TextStyle(
                 fontSize: 10.5,
                 color: selected

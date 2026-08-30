@@ -438,14 +438,15 @@ class _ProfileRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
+          ClipOval(
+            child: Container(
+              width: 40,
+              height: 40,
               color: colors.placeholder,
-              shape: BoxShape.circle,
+              child: profile.avatarUrl == null
+                  ? Icon(Icons.person_outline, size: 18, color: colors.inkFaint)
+                  : Image.network(profile.avatarUrl!, fit: BoxFit.cover),
             ),
-            child: Icon(Icons.person_outline, size: 18, color: colors.inkFaint),
           ),
           const SizedBox(width: 12),
           Expanded(

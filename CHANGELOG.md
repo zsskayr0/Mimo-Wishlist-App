@@ -4,6 +4,29 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.29-alpha] - 2026-08-30
+
+### Added
+- **Requer a migration `008_folder_cover_and_ownership.sql`** — adiciona
+  `folders.cover_image_url` e a função `transfer_folder_ownership`.
+  Enquanto ela não roda, editar pasta (nome/cor) e transferir dono dão
+  erro; o resto desta versão funciona normalmente.
+- Botão "Convidar" da pasta virou "Opções da pasta" (mesmo visual do
+  botão de opções do Detalhe do mimo) e agora é o menu completo de quem
+  tem acesso: dono (com a tag "Dono"), editores e visualizadores, cada
+  um com avatar. Dono pode tornar outro membro o novo dono da pasta,
+  remover membros, editar a pasta (nome, cor, foto de capa) e excluir a
+  pasta inteira.
+- Dono da pasta agora também aparece nos filtros por pessoa (antes só
+  editores/visualizadores apareciam).
+- Mimos de outra pessoa numa pasta compartilhada mostram um selo com o
+  avatar de quem adicionou (nos modos lista e grid; tabela ainda não).
+
+### Fixed
+- Foto de perfil dos amigos nunca aparecia em lugar nenhum (busca,
+  solicitações, lista de amigos) — sempre mostrava o ícone genérico
+  mesmo com avatar_url preenchido.
+
 ## [0.0.28-alpha] - 2026-08-30
 
 ### Added

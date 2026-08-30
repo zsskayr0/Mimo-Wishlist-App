@@ -9,7 +9,11 @@ import 'create_folder_sheet.dart';
 /// Also where "criar uma pasta nova" happens on-the-go: no need to back
 /// out of whatever flow opened this picker just to make a folder first.
 class FolderPickerSheet extends StatefulWidget {
-  const FolderPickerSheet({super.key, required this.folders, this.selectedFolderId});
+  const FolderPickerSheet({
+    super.key,
+    required this.folders,
+    this.selectedFolderId,
+  });
 
   final List<Folder> folders;
   final String? selectedFolderId;
@@ -23,7 +27,10 @@ class FolderPickerSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => FolderPickerSheet(folders: folders, selectedFolderId: selectedFolderId),
+      builder: (_) => FolderPickerSheet(
+        folders: folders,
+        selectedFolderId: selectedFolderId,
+      ),
     );
   }
 
@@ -41,7 +48,8 @@ class _FolderPickerSheetState extends State<FolderPickerSheet> {
     super.dispose();
   }
 
-  Color _colorFor(String hex) => Color(int.parse('FF${hex.replaceFirst('#', '')}', radix: 16));
+  Color _colorFor(String hex) =>
+      Color(int.parse('FF${hex.replaceFirst('#', '')}', radix: 16));
 
   Future<void> _createFolder() async {
     final created = await CreateFolderSheet.show(context);
@@ -56,7 +64,9 @@ class _FolderPickerSheetState extends State<FolderPickerSheet> {
     final query = _query.trim().toLowerCase();
     final filtered = query.isEmpty
         ? widget.folders
-        : widget.folders.where((f) => f.name.toLowerCase().contains(query)).toList();
+        : widget.folders
+              .where((f) => f.name.toLowerCase().contains(query))
+              .toList();
 
     return Container(
       decoration: BoxDecoration(
@@ -73,10 +83,16 @@ class _FolderPickerSheetState extends State<FolderPickerSheet> {
               width: 38,
               height: 4,
               margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(color: colors.placeholder, borderRadius: BorderRadius.circular(3)),
+              decoration: BoxDecoration(
+                color: colors.placeholder,
+                borderRadius: BorderRadius.circular(3),
+              ),
             ),
           ),
-          const Text('Escolher pasta', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+          const Text(
+            'Escolher pasta',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
           if (widget.folders.length > 4) ...[
             Container(
@@ -98,7 +114,11 @@ class _FolderPickerSheetState extends State<FolderPickerSheet> {
                       style: const TextStyle(fontSize: 13.5),
                       decoration: InputDecoration(
                         hintText: 'Buscar pasta',
-                        hintStyle: TextStyle(fontSize: 13.5, color: colors.inkFaint, fontWeight: FontWeight.w300),
+                        hintStyle: TextStyle(
+                          fontSize: 13.5,
+                          color: colors.inkFaint,
+                          fontWeight: FontWeight.w300,
+                        ),
                         border: InputBorder.none,
                         isDense: true,
                       ),
@@ -125,29 +145,54 @@ class _FolderPickerSheetState extends State<FolderPickerSheet> {
                           width: 22,
                           height: 22,
                           decoration: BoxDecoration(
-                            border: Border.all(color: colors.inkFaint, width: 1.5),
+                            border: Border.all(
+                              color: colors.inkFaint,
+                              width: 1.5,
+                            ),
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(Icons.add, size: 13, color: colors.inkFaint),
+                          child: Icon(
+                            Icons.add,
+                            size: 13,
+                            color: colors.inkFaint,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'Criar nova pasta',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.inkSoft),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: colors.inkSoft,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-                if (query.isEmpty) _row(context, id: null, label: 'Nenhuma (Desorganizado)', color: null),
+                if (query.isEmpty)
+                  _row(
+                    context,
+                    id: null,
+                    label: 'Nenhuma (Desorganizado)',
+                    color: null,
+                  ),
                 for (final folder in filtered)
-                  _row(context, id: folder.id, label: folder.name, color: _colorFor(folder.color)),
+                  _row(
+                    context,
+                    id: folder.id,
+                    label: folder.name,
+                    color: _colorFor(folder.color),
+                  ),
                 if (query.isNotEmpty && filtered.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text('Nenhuma pasta encontrada.', style: TextStyle(color: colors.inkFaint, fontSize: 13)),
+                    child: Text(
+                      'Nenhuma pasta encontrada.',
+                      style: TextStyle(color: colors.inkFaint, fontSize: 13),
+                    ),
                   ),
               ],
             ),
@@ -157,7 +202,12 @@ class _FolderPickerSheetState extends State<FolderPickerSheet> {
     );
   }
 
-  Widget _row(BuildContext context, {required String? id, required String label, required Color? color}) {
+  Widget _row(
+    BuildContext context, {
+    required String? id,
+    required String label,
+    required Color? color,
+  }) {
     final colors = MimoColors.of(context);
     final selected = id == widget.selectedFolderId;
     return InkWell(
@@ -170,11 +220,23 @@ class _FolderPickerSheetState extends State<FolderPickerSheet> {
             Container(
               width: 12,
               height: 12,
-              decoration: BoxDecoration(color: color ?? colors.border, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: color ?? colors.border,
+                shape: BoxShape.circle,
+              ),
             ),
             const SizedBox(width: 12),
-            Expanded(child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
-            if (selected) Icon(Icons.check, size: 18, color: MimoColors.gradientA),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            if (selected)
+              Icon(Icons.check, size: 18, color: MimoColors.gradientA),
           ],
         ),
       ),

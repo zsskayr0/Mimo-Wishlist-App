@@ -15,16 +15,37 @@ class AlreadyMemberException implements Exception {}
 /// owner-or-member filtering on folders — the
 /// `folders_select_owner_or_member` RLS policy already returns exactly the
 /// folders this user owns or belongs to, so a plain select is correct.
+///
+/// `users!folders_owner_id_fkey` — folders has *two* paths to users (the
+/// owner_id FK directly, and the folder_members many-to-many), so a plain
+/// `users(...)` embed is ambiguous to Postgrest (PGRST201); this names the
+/// specific relationship. Always embedded now (not just in
+/// fetchSharedWithMe) — FolderOptionsSheet's member list needs the
+/// owner's profile regardless of which list the Folder came from.
 class FolderRepository {
   FolderRepository({SupabaseClient? client})
     : _client = client ?? Supabase.instance.client;
 
+  static const _folderSelect =
+      '*, mimos(count), folder_members(users(avatar_url)), users!folders_owner_id_fkey(username, display_name, avatar_url)';
+
   final SupabaseClient _client;
+
+  /// Refetches one folder with fresh data — used after FolderOptionsSheet
+  /// closes, in case name/color/cover changed there.
+  Future<Folder> fetchFolder(String folderId) async {
+    final row = await _client
+        .from('folders')
+        .select(_folderSelect)
+        .eq('id', folderId)
+        .single();
+    return Folder.fromJson(row);
+  }
 
   Future<List<Folder>> fetchFolders() async {
     final rows = await _client
         .from('folders')
-        .select('*, mimos(count), folder_members(users(avatar_url))')
+        .select(_folderSelect)
         .order('created_at', ascending: false);
 
     return (rows as List)
@@ -33,22 +54,14 @@ class FolderRepository {
   }
 
   /// Folders someone else shared with the current user — for the Amigos
-  /// screen's "Pastas compartilhadas com você" section. RLS already limits
-  /// `folders` to owner-or-member; `neq('owner_id', ...)` narrows that down
-  /// to just the "member, not owner" half, and the `users(username)` embed
-  /// is what lets that section say who shared it.
-  ///
-  /// `users!folders_owner_id_fkey` — folders actually has *two* paths to
-  /// users (the owner_id FK directly, and the folder_members many-to-many),
-  /// so a plain `users(username)` is ambiguous to Postgrest (PGRST201);
-  /// this names the specific relationship to embed.
+  /// screen's "Pastas compartilhadas com você" section.
   Future<List<Folder>> fetchSharedWithMe() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return const [];
 
     final rows = await _client
         .from('folders')
-        .select('*, mimos(count), users!folders_owner_id_fkey(username)')
+        .select(_folderSelect)
         .neq('owner_id', userId)
         .order('created_at', ascending: false);
 
@@ -71,15 +84,50 @@ class FolderRepository {
     final inserted = await _client
         .from('folders')
         .insert({'owner_id': userId, 'name': name, 'color': color})
-        .select()
+        .select(_folderSelect)
         .single();
     return Folder.fromJson(inserted);
+  }
+
+  /// Rename/recolor/re-cover an existing folder ("customizar a pasta").
+  /// `coverImageUrl` uses the nullable-clearing-function pattern (see
+  /// Mimo.copyWith) so callers can distinguish "leave it" from "clear it".
+  Future<void> updateFolder({
+    required String folderId,
+    String? name,
+    String? color,
+    String? Function()? coverImageUrl,
+  }) async {
+    final patch = <String, dynamic>{
+      'name': ?name,
+      'color': ?color,
+      if (coverImageUrl != null) 'cover_image_url': coverImageUrl(),
+    };
+    if (patch.isEmpty) return;
+    await _client.from('folders').update(patch).eq('id', folderId);
+  }
+
+  Future<void> deleteFolder(String folderId) async {
+    await _client.from('folders').delete().eq('id', folderId);
+  }
+
+  /// See migration 008 for why this is an RPC rather than a plain update
+  /// — RLS's implicit WITH CHECK on folders_update_owner_or_editor
+  /// rejects a direct owner_id change.
+  Future<void> transferOwnership({
+    required String folderId,
+    required String newOwnerId,
+  }) async {
+    await _client.rpc(
+      'transfer_folder_ownership',
+      params: {'p_folder_id': folderId, 'p_new_owner_id': newOwnerId},
+    );
   }
 
   Future<List<FolderMember>> fetchMembers(String folderId) async {
     final rows = await _client
         .from('folder_members')
-        .select('role, users(id, username, display_name)')
+        .select('role, users(id, username, display_name, avatar_url)')
         .eq('folder_id', folderId);
 
     return (rows as List)

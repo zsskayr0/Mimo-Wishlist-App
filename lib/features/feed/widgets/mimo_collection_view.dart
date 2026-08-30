@@ -11,26 +11,34 @@ import 'mimo_card.dart';
 String _formatPrice(double price) {
   final fixed = price.toStringAsFixed(2).replaceAll('.', ',');
   final parts = fixed.split(',');
-  final intPart = parts[0].replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
+  final intPart = parts[0].replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (m) => '.',
+  );
   return 'R\$ $intPart,${parts[1]}';
 }
 
-Color _colorFromHex(String hex) => Color(int.parse('FF${hex.replaceFirst('#', '')}', radix: 16));
+Color _colorFromHex(String hex) =>
+    Color(int.parse('FF${hex.replaceFirst('#', '')}', radix: 16));
 
 const _priorityLabels = {'baixa': 'Baixa', 'media': 'Média', 'alta': 'Alta'};
-const _statusLabels = {'desejado': 'Desejado', 'comprado': 'Comprado', 'arquivado': 'Arquivado'};
+const _statusLabels = {
+  'desejado': 'Desejado',
+  'comprado': 'Comprado',
+  'arquivado': 'Arquivado',
+};
 
 Color _priorityColor(MimoColors colors, String priority) => switch (priority) {
-      'alta' => colors.tagPlum,
-      'media' => colors.tagGold,
-      _ => colors.tagGray,
-    };
+  'alta' => colors.tagPlum,
+  'media' => colors.tagGold,
+  _ => colors.tagGray,
+};
 
 Color _statusColor(MimoColors colors, String status) => switch (status) {
-      'comprado' => colors.tagSage,
-      'arquivado' => colors.tagGray,
-      _ => colors.tagGold,
-    };
+  'comprado' => colors.tagSage,
+  'arquivado' => colors.tagGray,
+  _ => colors.tagGold,
+};
 
 // Shared between the table's header and body rows so their columns stay
 // aligned.
@@ -60,12 +68,19 @@ class MimoCollectionView extends StatelessWidget {
     this.onPriorityChanged,
     this.onStatusChanged,
     this.onCreateInline,
+    this.ownerAvatarOf,
   });
 
   final List<Mimo> mimos;
   final ValueChanged<Mimo> onTap;
   final bool isDesktop;
   final EdgeInsets padding;
+
+  /// Shared-folder "who added this" badge (list/grid modes only) — null
+  /// return hides it for that mimo (e.g. it's the viewer's own). Whole
+  /// param null (the common case — Feed, unshared folders) skips it
+  /// entirely.
+  final String? Function(Mimo mimo)? ownerAvatarOf;
 
   /// Table mode only — lets priority/status be edited straight from the
   /// row instead of having to open the mimo first. Null in every other
@@ -86,19 +101,35 @@ class MimoCollectionView extends StatelessWidget {
         valueListenable: ViewModeController.instance.desktopMode,
         builder: (context, mode, _) {
           return switch (mode) {
-            DesktopMimoView.list => _MimoListView(mimos: mimos, onTap: onTap, detailed: false, padding: padding),
-            DesktopMimoView.detailedList =>
-              _MimoListView(mimos: mimos, onTap: onTap, detailed: true, padding: padding),
+            DesktopMimoView.list => _MimoListView(
+              mimos: mimos,
+              onTap: onTap,
+              detailed: false,
+              padding: padding,
+              ownerAvatarOf: ownerAvatarOf,
+            ),
+            DesktopMimoView.detailedList => _MimoListView(
+              mimos: mimos,
+              onTap: onTap,
+              detailed: true,
+              padding: padding,
+              ownerAvatarOf: ownerAvatarOf,
+            ),
             DesktopMimoView.table => _MimoTableView(
-                mimos: mimos,
-                onTap: onTap,
-                padding: padding,
-                onPriorityChanged: onPriorityChanged,
-                onStatusChanged: onStatusChanged,
-                onCreateInline: onCreateInline,
-              ),
-            DesktopMimoView.dynamicGrid =>
-              _MimoGridView(mimos: mimos, onTap: onTap, dynamicCover: true, padding: padding),
+              mimos: mimos,
+              onTap: onTap,
+              padding: padding,
+              onPriorityChanged: onPriorityChanged,
+              onStatusChanged: onStatusChanged,
+              onCreateInline: onCreateInline,
+            ),
+            DesktopMimoView.dynamicGrid => _MimoGridView(
+              mimos: mimos,
+              onTap: onTap,
+              dynamicCover: true,
+              padding: padding,
+              ownerAvatarOf: ownerAvatarOf,
+            ),
           };
         },
       );
@@ -107,10 +138,34 @@ class MimoCollectionView extends StatelessWidget {
       valueListenable: ViewModeController.instance.mobileMode,
       builder: (context, mode, _) {
         return switch (mode) {
-          MobileMimoView.list => _MimoListView(mimos: mimos, onTap: onTap, detailed: false, padding: padding),
-          MobileMimoView.detailedList => _MimoListView(mimos: mimos, onTap: onTap, detailed: true, padding: padding),
-          MobileMimoView.grid2 => _MimoGridView(mimos: mimos, onTap: onTap, crossAxisCount: 2, padding: padding),
-          MobileMimoView.grid3 => _MimoGridView(mimos: mimos, onTap: onTap, crossAxisCount: 3, padding: padding),
+          MobileMimoView.list => _MimoListView(
+            mimos: mimos,
+            onTap: onTap,
+            detailed: false,
+            padding: padding,
+            ownerAvatarOf: ownerAvatarOf,
+          ),
+          MobileMimoView.detailedList => _MimoListView(
+            mimos: mimos,
+            onTap: onTap,
+            detailed: true,
+            padding: padding,
+            ownerAvatarOf: ownerAvatarOf,
+          ),
+          MobileMimoView.grid2 => _MimoGridView(
+            mimos: mimos,
+            onTap: onTap,
+            crossAxisCount: 2,
+            padding: padding,
+            ownerAvatarOf: ownerAvatarOf,
+          ),
+          MobileMimoView.grid3 => _MimoGridView(
+            mimos: mimos,
+            onTap: onTap,
+            crossAxisCount: 3,
+            padding: padding,
+            ownerAvatarOf: ownerAvatarOf,
+          ),
         };
       },
     );
@@ -124,6 +179,7 @@ class _MimoGridView extends StatelessWidget {
     this.dynamicCover = false,
     this.crossAxisCount,
     required this.padding,
+    this.ownerAvatarOf,
   });
 
   final List<Mimo> mimos;
@@ -134,6 +190,7 @@ class _MimoGridView extends StatelessWidget {
   /// auto-columns-by-width delegate instead (desktop's dynamicGrid).
   final int? crossAxisCount;
   final EdgeInsets padding;
+  final String? Function(Mimo mimo)? ownerAvatarOf;
 
   @override
   Widget build(BuildContext context) {
@@ -148,6 +205,7 @@ class _MimoGridView extends StatelessWidget {
           mimo: mimos[index],
           onTap: () => onTap(mimos[index]),
           dynamicCover: dynamicCover,
+          ownerAvatarUrl: ownerAvatarOf?.call(mimos[index]),
         ),
       );
     }
@@ -161,18 +219,26 @@ class _MimoGridView extends StatelessWidget {
         mimo: mimos[index],
         onTap: () => onTap(mimos[index]),
         dynamicCover: dynamicCover,
+        ownerAvatarUrl: ownerAvatarOf?.call(mimos[index]),
       ),
     );
   }
 }
 
 class _MimoListView extends StatelessWidget {
-  const _MimoListView({required this.mimos, required this.onTap, required this.detailed, required this.padding});
+  const _MimoListView({
+    required this.mimos,
+    required this.onTap,
+    required this.detailed,
+    required this.padding,
+    this.ownerAvatarOf,
+  });
 
   final List<Mimo> mimos;
   final ValueChanged<Mimo> onTap;
   final bool detailed;
   final EdgeInsets padding;
+  final String? Function(Mimo mimo)? ownerAvatarOf;
 
   @override
   Widget build(BuildContext context) {
@@ -182,23 +248,36 @@ class _MimoListView extends StatelessWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final mimo = mimos[index];
-        return _MimoListTile(mimo: mimo, detailed: detailed, onTap: () => onTap(mimo));
+        return _MimoListTile(
+          mimo: mimo,
+          detailed: detailed,
+          onTap: () => onTap(mimo),
+          ownerAvatarUrl: ownerAvatarOf?.call(mimo),
+        );
       },
     );
   }
 }
 
 class _MimoListTile extends StatelessWidget {
-  const _MimoListTile({required this.mimo, required this.detailed, required this.onTap});
+  const _MimoListTile({
+    required this.mimo,
+    required this.detailed,
+    required this.onTap,
+    this.ownerAvatarUrl,
+  });
 
   final Mimo mimo;
   final bool detailed;
   final VoidCallback onTap;
+  final String? ownerAvatarUrl;
 
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
-    final folderColor = mimo.folderColor == null ? colors.tagGold : _colorFromHex(mimo.folderColor!);
+    final folderColor = mimo.folderColor == null
+        ? colors.tagGold
+        : _colorFromHex(mimo.folderColor!);
     final thumbSize = detailed ? 68.0 : 48.0;
 
     return Material(
@@ -216,19 +295,52 @@ class _MimoListTile extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: SizedBox(
-                  width: thumbSize,
-                  height: thumbSize,
-                  child: mimo.coverImageUrl == null
-                      ? Container(
-                          color: colors.placeholder,
-                          alignment: Alignment.center,
-                          child: Icon(Icons.image_outlined, size: detailed ? 24 : 18, color: colors.inkFaint),
-                        )
-                      : Image.network(mimo.coverImageUrl!, fit: BoxFit.cover),
-                ),
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: SizedBox(
+                      width: thumbSize,
+                      height: thumbSize,
+                      child: mimo.coverImageUrl == null
+                          ? Container(
+                              color: colors.placeholder,
+                              alignment: Alignment.center,
+                              child: Icon(
+                                Icons.image_outlined,
+                                size: detailed ? 24 : 18,
+                                color: colors.inkFaint,
+                              ),
+                            )
+                          : Image.network(
+                              mimo.coverImageUrl!,
+                              fit: BoxFit.cover,
+                            ),
+                    ),
+                  ),
+                  if (ownerAvatarUrl != null)
+                    Positioned(
+                      left: -3,
+                      top: -3,
+                      child: ClipOval(
+                        child: Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: colors.placeholder,
+                            border: Border.all(
+                              color: colors.surface,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Image.network(
+                            ownerAvatarUrl!,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -240,13 +352,20 @@ class _MimoListTile extends StatelessWidget {
                       mimo.title,
                       maxLines: detailed ? 2 : 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: detailed ? 14.5 : 13.5, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: detailed ? 14.5 : 13.5,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     if (mimo.price != null) ...[
                       const SizedBox(height: 3),
                       Text(
                         _formatPrice(mimo.price!),
-                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: colors.inkSoft),
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: colors.inkSoft,
+                        ),
                       ),
                     ],
                     if (detailed) ...[
@@ -256,12 +375,22 @@ class _MimoListTile extends StatelessWidget {
                         runSpacing: 6,
                         children: [
                           _Pill(
-                            label: mimo.isUnorganized ? 'Desorganizado' : mimo.folderName ?? '—',
-                            color: mimo.isUnorganized ? colors.tagGray : folderColor,
-                            background: mimo.isUnorganized ? colors.tagGrayBg : folderColor.withValues(alpha: 0.16),
+                            label: mimo.isUnorganized
+                                ? 'Desorganizado'
+                                : mimo.folderName ?? '—',
+                            color: mimo.isUnorganized
+                                ? colors.tagGray
+                                : folderColor,
+                            background: mimo.isUnorganized
+                                ? colors.tagGrayBg
+                                : folderColor.withValues(alpha: 0.16),
                           ),
                           for (final tag in mimo.tags.take(3))
-                            _Pill(label: '#${tag.name}', color: colors.tagPlum, background: colors.tagPlumBg),
+                            _Pill(
+                              label: '#${tag.name}',
+                              color: colors.tagPlum,
+                              background: colors.tagPlumBg,
+                            ),
                         ],
                       ),
                     ],
@@ -303,7 +432,10 @@ class _MimoTableView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
-    final horizontal = EdgeInsets.only(left: padding.left, right: padding.right);
+    final horizontal = EdgeInsets.only(
+      left: padding.left,
+      right: padding.right,
+    );
     return Column(
       children: [
         Padding(
@@ -315,7 +447,8 @@ class _MimoTableView extends StatelessWidget {
           child: ListView.separated(
             padding: EdgeInsets.only(bottom: padding.bottom),
             itemCount: mimos.length + (onCreateInline == null ? 0 : 1),
-            separatorBuilder: (_, _) => Divider(height: 1, color: colors.border),
+            separatorBuilder: (_, _) =>
+                Divider(height: 1, color: colors.border),
             itemBuilder: (context, index) {
               if (index >= mimos.length) {
                 return Padding(
@@ -330,8 +463,12 @@ class _MimoTableView extends StatelessWidget {
                   mimo: mimo,
                   colors: colors,
                   onTap: () => onTap(mimo),
-                  onPriorityChanged: onPriorityChanged == null ? null : (p) => onPriorityChanged!(mimo, p),
-                  onStatusChanged: onStatusChanged == null ? null : (s) => onStatusChanged!(mimo, s),
+                  onPriorityChanged: onPriorityChanged == null
+                      ? null
+                      : (p) => onPriorityChanged!(mimo, p),
+                  onStatusChanged: onStatusChanged == null
+                      ? null
+                      : (s) => onStatusChanged!(mimo, s),
                 ),
               );
             },
@@ -343,19 +480,29 @@ class _MimoTableView extends StatelessWidget {
 
   Widget _headerRow(MimoColors colors) {
     Widget label(String text, int flex) => Expanded(
-          flex: flex,
-          child: Text(
-            text,
-            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: colors.inkFaint),
-          ),
-        );
+      flex: flex,
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+          color: colors.inkFaint,
+        ),
+      ),
+    );
     Widget fixedLabel(String text, double width) => SizedBox(
-          width: width,
-          child: Text(
-            text,
-            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: colors.inkFaint),
-          ),
-        );
+      width: width,
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+          color: colors.inkFaint,
+        ),
+      ),
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
@@ -406,7 +553,9 @@ class _TableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final folderColor = mimo.folderColor == null ? colors.tagGold : _colorFromHex(mimo.folderColor!);
+    final folderColor = mimo.folderColor == null
+        ? colors.tagGold
+        : _colorFromHex(mimo.folderColor!);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
@@ -423,7 +572,14 @@ class _TableRow extends StatelessWidget {
                 width: _tableCoverSize,
                 height: _tableCoverSize,
                 child: mimo.coverImageUrl == null
-                    ? Container(color: colors.placeholder, child: Icon(Icons.image_outlined, size: 14, color: colors.inkFaint))
+                    ? Container(
+                        color: colors.placeholder,
+                        child: Icon(
+                          Icons.image_outlined,
+                          size: 14,
+                          color: colors.inkFaint,
+                        ),
+                      )
                     : Image.network(mimo.coverImageUrl!, fit: BoxFit.cover),
               ),
             ),
@@ -442,14 +598,21 @@ class _TableRow extends StatelessWidget {
           SizedBox(
             width: _tableLinkWidth,
             child: mimo.storeDomain == null
-                ? Text('—', style: TextStyle(fontSize: 12, color: colors.inkFaint))
+                ? Text(
+                    '—',
+                    style: TextStyle(fontSize: 12, color: colors.inkFaint),
+                  )
                 : InkWell(
                     onTap: mimo.originalUrl == null ? null : _openLink,
                     child: Text(
                       mimo.storeDomain!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: MimoColors.gradientA),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: MimoColors.gradientA,
+                      ),
                     ),
                   ),
           ),
@@ -458,16 +621,24 @@ class _TableRow extends StatelessWidget {
             flex: _tablePriceFlex,
             child: Text(
               mimo.price == null ? '—' : _formatPrice(mimo.price!),
-              style: TextStyle(fontSize: 12.5, color: colors.inkSoft, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontSize: 12.5,
+                color: colors.inkSoft,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           _tableColumnGap,
           Expanded(
             flex: _tableFolderFlex,
             child: _Pill(
-              label: mimo.isUnorganized ? 'Desorganizado' : (mimo.folderName ?? '—'),
+              label: mimo.isUnorganized
+                  ? 'Desorganizado'
+                  : (mimo.folderName ?? '—'),
               color: mimo.isUnorganized ? colors.tagGray : folderColor,
-              background: mimo.isUnorganized ? colors.tagGrayBg : folderColor.withValues(alpha: 0.16),
+              background: mimo.isUnorganized
+                  ? colors.tagGrayBg
+                  : folderColor.withValues(alpha: 0.16),
               compact: true,
             ),
           ),
@@ -475,15 +646,29 @@ class _TableRow extends StatelessWidget {
           Expanded(
             flex: _tableTagsFlex,
             child: mimo.tags.isEmpty
-                ? Text('—', style: TextStyle(fontSize: 12, color: colors.inkFaint))
+                ? Text(
+                    '—',
+                    style: TextStyle(fontSize: 12, color: colors.inkFaint),
+                  )
                 : Wrap(
                     spacing: 4,
                     runSpacing: 4,
                     children: [
                       for (final tag in mimo.tags.take(2))
-                        _Pill(label: '#${tag.name}', color: colors.tagPlum, background: colors.tagPlumBg, compact: true),
+                        _Pill(
+                          label: '#${tag.name}',
+                          color: colors.tagPlum,
+                          background: colors.tagPlumBg,
+                          compact: true,
+                        ),
                       if (mimo.tags.length > 2)
-                        Text('+${mimo.tags.length - 2}', style: TextStyle(fontSize: 11, color: colors.inkFaint)),
+                        Text(
+                          '+${mimo.tags.length - 2}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colors.inkFaint,
+                          ),
+                        ),
                     ],
                   ),
           ),
@@ -493,7 +678,10 @@ class _TableRow extends StatelessWidget {
             child: _EditablePill(
               label: _priorityLabels[mimo.priority] ?? mimo.priority,
               color: _priorityColor(colors, mimo.priority),
-              background: _priorityColor(colors, mimo.priority).withValues(alpha: 0.14),
+              background: _priorityColor(
+                colors,
+                mimo.priority,
+              ).withValues(alpha: 0.14),
               options: _priorityLabels,
               current: mimo.priority,
               onChanged: onPriorityChanged,
@@ -505,7 +693,10 @@ class _TableRow extends StatelessWidget {
             child: _EditablePill(
               label: _statusLabels[mimo.purchaseStatus] ?? mimo.purchaseStatus,
               color: _statusColor(colors, mimo.purchaseStatus),
-              background: _statusColor(colors, mimo.purchaseStatus).withValues(alpha: 0.14),
+              background: _statusColor(
+                colors,
+                mimo.purchaseStatus,
+              ).withValues(alpha: 0.14),
               options: _statusLabels,
               current: mimo.purchaseStatus,
               onChanged: onStatusChanged,
@@ -557,7 +748,10 @@ class _InlineCreateRowState extends State<_InlineCreateRow> {
             width: _tableCoverSize,
             height: _tableCoverSize,
             decoration: BoxDecoration(
-              border: Border.all(color: colors.border, style: BorderStyle.solid),
+              border: Border.all(
+                color: colors.border,
+                style: BorderStyle.solid,
+              ),
               borderRadius: BorderRadius.circular(7),
             ),
             child: Icon(Icons.add, size: 15, color: colors.inkFaint),
@@ -573,7 +767,10 @@ class _InlineCreateRowState extends State<_InlineCreateRow> {
                 isCollapsed: true,
                 border: InputBorder.none,
                 hintText: 'Adicionar mimo…',
-                hintStyle: TextStyle(color: colors.inkFaint, fontWeight: FontWeight.w400),
+                hintStyle: TextStyle(
+                  color: colors.inkFaint,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
             ),
           ),
@@ -605,7 +802,12 @@ class _EditablePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pill = _Pill(label: label, color: color, background: background, compact: true);
+    final pill = _Pill(
+      label: label,
+      color: color,
+      background: background,
+      compact: true,
+    );
     if (onChanged == null) return pill;
 
     return PopupMenuButton<String>(
@@ -620,7 +822,8 @@ class _EditablePill extends StatelessWidget {
             value: entry.key,
             child: Row(
               children: [
-                if (entry.key == current) Icon(Icons.check, size: 16, color: MimoColors.gradientA),
+                if (entry.key == current)
+                  Icon(Icons.check, size: 16, color: MimoColors.gradientA),
                 if (entry.key != current) const SizedBox(width: 16),
                 const SizedBox(width: 8),
                 Text(entry.value),
@@ -634,7 +837,12 @@ class _EditablePill extends StatelessWidget {
 }
 
 class _Pill extends StatelessWidget {
-  const _Pill({required this.label, required this.color, required this.background, this.compact = false});
+  const _Pill({
+    required this.label,
+    required this.color,
+    required this.background,
+    this.compact = false,
+  });
 
   final String label;
   final Color color;
@@ -644,13 +852,23 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 10, vertical: compact ? 3 : 4),
-      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(999)),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 10,
+        vertical: compact ? 3 : 4,
+      ),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Text(
         label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(fontSize: compact ? 10.5 : 11, fontWeight: FontWeight.bold, color: color),
+        style: TextStyle(
+          fontSize: compact ? 10.5 : 11,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
       ),
     );
   }
