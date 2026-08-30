@@ -4,6 +4,32 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [1.0.0] - 2026-08-30
+
+Primeira versão estável, depois de toda a fase alpha. Sem mudança de
+código desde a 0.0.36-alpha — esse é só o corte da versão.
+
+### O que o Mimo faz hoje
+
+- **Feed** com busca (título e tags), filtros (pasta, tag, dono,
+  prioridade, status de compra, loja) e ordenação; agrupamento por pasta
+  direto no feed.
+- **Captura rápida** — cola um link e título/preço/foto vêm sozinhos, ou
+  tira foto/escolhe da galeria. Compartilhar direto de outro app
+  (Android) também abre a captura já preenchida.
+- **Pastas** — cor, foto de capa, compartilhar com editor/visualizador,
+  transferir dono, ver quem tem acesso, opções on-the-go (botão no
+  desktop, toque longo no mobile).
+- **Amigos** — busca por @usuário, solicitações, pastas compartilhadas
+  com você.
+- **Perfil** — foto, bio de até 50 caracteres.
+- **Modos de visualização** por dispositivo (lista, lista detalhada,
+  grid, tabela no desktop; lista, lista detalhada, grid 2/3 colunas no
+  mobile), com preview animado em Configurações.
+- Tema claro/escuro, escuro com fundo verdadeiro preto pra AMOLED.
+- Shell adaptativo (barra lateral no desktop, barra inferior com swipe
+  entre abas no mobile).
+
 ## [0.0.36-alpha] - 2026-08-30
 
 ### Added
