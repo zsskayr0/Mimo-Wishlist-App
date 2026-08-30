@@ -243,7 +243,7 @@ class _MimoListTile extends StatelessWidget {
   }
 }
 
-/// Desktop-only "Tabela" — a real Notion-style data grid: aligned
+/// Desktop-only "Tabela" — a real data grid: aligned
 /// columns, a light header row, thin row dividers instead of boxed
 /// cells, and the default hover highlight `InkWell` already gives for
 /// free when a mouse is present.

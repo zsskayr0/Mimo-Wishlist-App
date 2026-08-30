@@ -14,7 +14,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
   pastas.
 - Configurações → Visualização: escolha independente pra celular (Lista,
   Lista detalhada, Grid 2/3/4 colunas) e desktop (Lista, Lista detalhada,
-  Tabela estilo Notion, Grid dinâmico), persistida (`ViewModeController`,
+  Tabela, Grid dinâmico), persistida (`ViewModeController`,
   mesmo padrão do `ThemeController`). Aplicada no Feed e na tela de
   Pasta via o novo `MimoCollectionView`.
 - Tabela (desktop): colunas de capa, título, preço, pasta, tags,
