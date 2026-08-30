@@ -169,10 +169,21 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
             children: [
               _Choice(
                 label: 'Todas',
-                selected: _filters.folderId == null,
+                selected: _filters.folderId == null && !_filters.unorganizedOnly,
                 colors: colors,
                 pill: true,
-                onTap: () => setState(() => _filters = _filters.copyWith(folderId: () => null)),
+                onTap: () => setState(
+                  () => _filters = _filters.copyWith(folderId: () => null, unorganizedOnly: false),
+                ),
+              ),
+              _Choice(
+                label: 'Desorganizado',
+                selected: _filters.unorganizedOnly,
+                colors: colors,
+                pill: true,
+                onTap: () => setState(
+                  () => _filters = _filters.copyWith(folderId: () => null, unorganizedOnly: true),
+                ),
               ),
               for (final folder in widget.folders)
                 _Choice(
@@ -180,7 +191,9 @@ class _MimoFilterSheetState extends State<MimoFilterSheet> {
                   selected: _filters.folderId == folder.id,
                   colors: colors,
                   pill: true,
-                  onTap: () => setState(() => _filters = _filters.copyWith(folderId: () => folder.id)),
+                  onTap: () => setState(
+                    () => _filters = _filters.copyWith(folderId: () => folder.id, unorganizedOnly: false),
+                  ),
                 ),
             ],
           ),

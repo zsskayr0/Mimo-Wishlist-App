@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -43,12 +45,22 @@ class MimoDetailScreen extends StatefulWidget {
 class _MimoDetailScreenState extends State<MimoDetailScreen> {
   final _mimoRepository = MimoRepository();
   late Mimo _mimo;
+  late final TextEditingController _notesController;
+  Timer? _notesDebounce;
   bool _isDeleted = false;
 
   @override
   void initState() {
     super.initState();
     _mimo = widget.mimo;
+    _notesController = TextEditingController(text: _mimo.notes ?? '');
+  }
+
+  @override
+  void dispose() {
+    _notesDebounce?.cancel();
+    _notesController.dispose();
+    super.dispose();
   }
 
   Future<void> _setPriority(String priority) async {
@@ -61,7 +73,18 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
     await _mimoRepository.updatePurchaseStatus(_mimo.id, status);
   }
 
-  Mimo _copyWith({String? priority, String? purchaseStatus}) => Mimo(
+  void _onNotesChanged(String value) {
+    _notesDebounce?.cancel();
+    _notesDebounce = Timer(const Duration(milliseconds: 600), () async {
+      final trimmed = value.trim();
+      final notes = trimmed.isEmpty ? null : trimmed;
+      if (notes == _mimo.notes) return;
+      setState(() => _mimo = _copyWith(notes: () => notes));
+      await _mimoRepository.updateNotes(_mimo.id, notes);
+    });
+  }
+
+  Mimo _copyWith({String? priority, String? purchaseStatus, String? Function()? notes}) => Mimo(
         id: _mimo.id,
         ownerId: _mimo.ownerId,
         title: _mimo.title,
@@ -71,7 +94,7 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
         folderId: _mimo.folderId,
         folderName: _mimo.folderName,
         folderColor: _mimo.folderColor,
-        notes: _mimo.notes,
+        notes: notes != null ? notes() : _mimo.notes,
         coverImageUrl: _mimo.coverImageUrl,
         originalUrl: _mimo.originalUrl,
         storeDomain: _mimo.storeDomain,
@@ -97,6 +120,7 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
     final refreshed = await _mimoRepository.fetchById(_mimo.id);
     if (!mounted || refreshed == null) return;
     setState(() => _mimo = refreshed);
+    _notesController.text = refreshed.notes ?? '';
   }
 
   Future<void> _duplicate() async {
@@ -148,239 +172,308 @@ class _MimoDetailScreenState extends State<MimoDetailScreen> {
     return Color(int.parse('FF${hex.replaceFirst('#', '')}', radix: 16));
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final colors = MimoColors.of(context);
+  // -------------------------------------------------------------------
+  // Reusable pieces — shared between the mobile single-column page and
+  // the desktop two-column dialog.
+  // -------------------------------------------------------------------
 
-    final content = Stack(
+  Widget _header(MimoColors colors) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Row(
+        children: [
+          _IconButton(
+            icon: widget.isDesktop ? Icons.close : Icons.arrow_back,
+            onTap: () => Navigator.of(context).pop(_isDeleted),
+          ),
+          const Spacer(),
+          Text(
+            'DETALHE DO MIMO',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.6, color: colors.inkFaint),
+          ),
+          const Spacer(),
+          PopupMenuButton<String>(
+            tooltip: 'Opções',
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+            onSelected: (value) {
+              if (value == 'edit') _edit();
+              if (value == 'duplicate') _duplicate();
+              if (value == 'delete') _confirmDelete();
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'edit', child: Text('Editar mimo')),
+              const PopupMenuItem(value: 'duplicate', child: Text('Duplicar em outra pasta')),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Text('Excluir mimo', style: TextStyle(color: Colors.red)),
+              ),
+            ],
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: colors.surface,
+                border: Border.all(color: colors.border),
+                borderRadius: BorderRadius.circular(11),
+                boxShadow: [
+                  BoxShadow(color: colors.ink.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2)),
+                ],
+              ),
+              child: Icon(Icons.more_horiz, size: 18, color: colors.ink),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cover(MimoColors colors) {
+    return AspectRatio(
+      aspectRatio: 1.3,
+      child: Container(
+        decoration: BoxDecoration(color: colors.placeholder, borderRadius: BorderRadius.circular(16)),
+        alignment: Alignment.center,
+        child: _mimo.coverImageUrl == null
+            ? Icon(Icons.image_outlined, size: 46, color: colors.inkFaint)
+            : ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(_mimo.coverImageUrl!, fit: BoxFit.cover),
+              ),
+      ),
+    );
+  }
+
+  Widget _titlePriceLink(MimoColors colors) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(_mimo.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
           children: [
-            Positioned.fill(
-              child: SafeArea(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(bottom: 120),
+            if (_mimo.price != null)
+              Text(_formatPrice(_mimo.price!), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            if (_mimo.storeDomain != null) ...[
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: _mimo.originalUrl == null ? null : _openStore,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _mimo.storeDomain!,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: MimoColors.gradientA),
+                    ),
+                    const SizedBox(width: 3),
+                    const Icon(Icons.north_east, size: 12, color: MimoColors.gradientA),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _pastaTagsPills(MimoColors colors) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _Pill(
+          label: _mimo.isUnorganized ? 'Desorganizado' : 'Pasta: ${_mimo.folderName ?? '—'}',
+          color: _mimo.isUnorganized ? colors.tagGray : _folderColor(colors),
+          background: _mimo.isUnorganized ? colors.tagGrayBg : _folderColor(colors).withValues(alpha: 0.16),
+        ),
+        for (final tag in _mimo.tags)
+          _Pill(label: '#${tag.name}', color: colors.tagPlum, background: colors.tagPlumBg),
+      ],
+    );
+  }
+
+  Widget _priorityBlock({EdgeInsetsGeometry? padding}) {
+    return _Block(
+      label: 'Prioridade',
+      padding: padding,
+      child: _Segmented(
+        options: const [('baixa', 'Baixa'), ('media', 'Média'), ('alta', 'Alta')],
+        value: _mimo.priority,
+        onChanged: _setPriority,
+      ),
+    );
+  }
+
+  Widget _statusBlock({EdgeInsetsGeometry? padding}) {
+    return _Block(
+      label: 'Status de compra',
+      padding: padding,
+      child: _Segmented(
+        options: const [('desejado', 'Desejado'), ('comprado', 'Comprado'), ('arquivado', 'Arquivado')],
+        value: _mimo.purchaseStatus,
+        onChanged: _setStatus,
+      ),
+    );
+  }
+
+  Widget _notesBlock(MimoColors colors, {EdgeInsetsGeometry? padding}) {
+    return _Block(
+      label: 'Notas',
+      padding: padding,
+      child: TextField(
+        controller: _notesController,
+        minLines: 3,
+        maxLines: 8,
+        onChanged: _onNotesChanged,
+        style: TextStyle(fontSize: 14, height: 1.5, color: colors.inkSoft),
+        decoration: InputDecoration(
+          isCollapsed: true,
+          border: InputBorder.none,
+          hintText: 'Adicione uma nota...',
+          hintStyle: TextStyle(fontSize: 14, color: colors.inkFaint, fontWeight: FontWeight.w300),
+        ),
+      ),
+    );
+  }
+
+  Widget _openStoreButton() {
+    return GradientButton(
+      onPressed: _openStore,
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text('Abrir na loja'),
+          SizedBox(width: 8),
+          Icon(Icons.north_east),
+        ],
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------
+
+  Widget _mobileContent(MimoColors colors) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 120),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _header(colors),
+                  Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: _cover(colors)),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _titlePriceLink(colors),
+                        const SizedBox(height: 14),
+                        _pastaTagsPills(colors),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _priorityBlock(),
+                  const SizedBox(height: 12),
+                  _statusBlock(),
+                  const SizedBox(height: 12),
+                  _notesBlock(colors),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (_mimo.originalUrl != null)
+          Positioned(left: 20, right: 20, bottom: 20, child: _openStoreButton()),
+      ],
+    );
+  }
+
+  /// Left: imagem, título, valor e link. Right: pasta, tags, prioridade,
+  /// status de compra e notas. No `Stack`/sticky button here — the dialog
+  /// sizes to its content instead of a fixed height, so "Abrir na loja"
+  /// just sits inline under the link, at the end of the left column.
+  Widget _desktopContent(MimoColors colors) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _header(colors),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                        child: Row(
-                          children: [
-                            _IconButton(
-                              icon: widget.isDesktop ? Icons.close : Icons.arrow_back,
-                              onTap: () => Navigator.of(context).pop(_isDeleted),
-                            ),
-                            const Spacer(),
-                            Text(
-                              'DETALHE DO MIMO',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.6,
-                                color: colors.inkFaint,
-                              ),
-                            ),
-                            const Spacer(),
-                            PopupMenuButton<String>(
-                              tooltip: 'Opções',
-                              padding: EdgeInsets.zero,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
-                              onSelected: (value) {
-                                if (value == 'edit') _edit();
-                                if (value == 'duplicate') _duplicate();
-                                if (value == 'delete') _confirmDelete();
-                              },
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(value: 'edit', child: Text('Editar mimo')),
-                                const PopupMenuItem(value: 'duplicate', child: Text('Duplicar em outra pasta')),
-                                const PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text('Excluir mimo', style: TextStyle(color: Colors.red)),
-                                ),
-                              ],
-                              child: Container(
-                                width: 38,
-                                height: 38,
-                                decoration: BoxDecoration(
-                                  color: colors.surface,
-                                  border: Border.all(color: colors.border),
-                                  borderRadius: BorderRadius.circular(11),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: colors.ink.withValues(alpha: 0.06),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Icon(Icons.more_horiz, size: 18, color: colors.ink),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: AspectRatio(
-                          aspectRatio: 1.3,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: colors.placeholder,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            alignment: Alignment.center,
-                            child: _mimo.coverImageUrl == null
-                                ? Icon(Icons.image_outlined, size: 46, color: colors.inkFaint)
-                                : ClipRRect(
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: Image.network(_mimo.coverImageUrl!, fit: BoxFit.cover),
-                                  ),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(_mimo.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 6),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.baseline,
-                              textBaseline: TextBaseline.alphabetic,
-                              children: [
-                                if (_mimo.price != null)
-                                  Text(
-                                    _formatPrice(_mimo.price!),
-                                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                                  ),
-                                if (_mimo.storeDomain != null) ...[
-                                  const SizedBox(width: 10),
-                                  GestureDetector(
-                                    onTap: _mimo.originalUrl == null ? null : _openStore,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          _mimo.storeDomain!,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: MimoColors.gradientA,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 3),
-                                        const Icon(Icons.north_east, size: 12, color: MimoColors.gradientA),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 14),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                _Pill(
-                                  label: _mimo.isUnorganized ? 'Desorganizado' : 'Pasta: ${_mimo.folderName ?? '—'}',
-                                  color: _mimo.isUnorganized ? colors.tagGray : _folderColor(colors),
-                                  background: _mimo.isUnorganized
-                                      ? colors.tagGrayBg
-                                      : _folderColor(colors).withValues(alpha: 0.16),
-                                ),
-                                for (final tag in _mimo.tags)
-                                  _Pill(
-                                    label: '#${tag.name}',
-                                    color: colors.tagPlum,
-                                    background: colors.tagPlumBg,
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      _Block(
-                        label: 'Prioridade',
-                        child: _Segmented(
-                          options: const [('baixa', 'Baixa'), ('media', 'Média'), ('alta', 'Alta')],
-                          value: _mimo.priority,
-                          onChanged: _setPriority,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _Block(
-                        label: 'Status de compra',
-                        child: _Segmented(
-                          options: const [
-                            ('desejado', 'Desejado'),
-                            ('comprado', 'Comprado'),
-                            ('arquivado', 'Arquivado'),
-                          ],
-                          value: _mimo.purchaseStatus,
-                          onChanged: _setStatus,
-                        ),
-                      ),
-                      if (_mimo.notes != null && _mimo.notes!.trim().isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        _Block(
-                          label: 'Notas',
-                          child: Text(
-                            _mimo.notes!,
-                            style: TextStyle(fontSize: 14, height: 1.5, color: colors.inkSoft),
-                          ),
-                        ),
+                      _cover(colors),
+                      const SizedBox(height: 16),
+                      _titlePriceLink(colors),
+                      if (_mimo.originalUrl != null) ...[
+                        const SizedBox(height: 16),
+                        _openStoreButton(),
                       ],
                     ],
                   ),
                 ),
-              ),
-            ),
-            if (_mimo.originalUrl != null)
-              Positioned(
-                left: 20,
-                right: 20,
-                bottom: 20,
-                child: GradientButton(
-                  onPressed: _openStore,
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                const SizedBox(width: 24),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Abrir na loja'),
-                      SizedBox(width: 8),
-                      Icon(Icons.north_east),
+                      _pastaTagsPills(colors),
+                      const SizedBox(height: 16),
+                      _priorityBlock(padding: EdgeInsets.zero),
+                      const SizedBox(height: 12),
+                      _statusBlock(padding: EdgeInsets.zero),
+                      const SizedBox(height: 12),
+                      _notesBlock(colors, padding: EdgeInsets.zero),
                     ],
                   ),
                 ),
-              ),
-          ],
-        );
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
 
     if (widget.isDesktop) {
-      // Same floating-dialog pattern as QuickCaptureSheet — a fixed
-      // SizedBox (not just a max-constraint) so the Stack above has a
-      // definite size to resolve `Positioned.fill`/`Positioned(bottom: 20)`
-      // against, the same way Scaffold's body gives it one on mobile.
-      final dialogHeight = MediaQuery.of(context).size.height * 0.86;
       return Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.all(24),
         child: Center(
-          child: SizedBox(
-            width: 480,
-            height: dialogHeight,
-            child: Material(
-              color: colors.bg,
-              borderRadius: BorderRadius.circular(20),
-              clipBehavior: Clip.antiAlias,
-              child: content,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.86),
+            child: SizedBox(
+              width: 820,
+              child: Material(
+                color: colors.bg,
+                borderRadius: BorderRadius.circular(20),
+                clipBehavior: Clip.antiAlias,
+                child: _desktopContent(colors),
+              ),
             ),
           ),
         ),
       );
     }
 
-    return Scaffold(backgroundColor: colors.bg, body: content);
+    return Scaffold(backgroundColor: colors.bg, body: _mobileContent(colors));
   }
 }
 
@@ -428,16 +521,22 @@ class _Pill extends StatelessWidget {
 }
 
 class _Block extends StatelessWidget {
-  const _Block({required this.label, required this.child});
+  const _Block({required this.label, required this.child, this.padding});
 
   final String label;
   final Widget child;
+
+  /// Defaults to a 20px horizontal inset, right for the mobile
+  /// single-column page; the desktop two-column layout passes
+  /// [EdgeInsets.zero] since the Row around both columns already
+  /// provides that inset from the dialog's edges.
+  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: padding ?? const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),

@@ -10,6 +10,7 @@ class MimoFilters {
     this.searchQuery = '',
     this.tagIds = const {},
     this.folderId,
+    this.unorganizedOnly = false,
     this.ownerId,
     this.priority,
     this.purchaseStatus,
@@ -21,6 +22,13 @@ class MimoFilters {
   final String searchQuery;
   final Set<String> tagIds;
   final String? folderId;
+
+  /// "Pasta: Desorganizado" — mutually exclusive with [folderId] by
+  /// construction (the sheet clears one whenever it sets the other);
+  /// distinct from "no pasta filter at all" (`folderId == null &&
+  /// !unorganizedOnly`), which `folderId` alone can't express since a
+  /// null folderId already means "don't filter by folder".
+  final bool unorganizedOnly;
   final String? ownerId;
   final String? priority;
   final String? purchaseStatus;
@@ -31,6 +39,7 @@ class MimoFilters {
   bool get hasActiveFilters =>
       tagIds.isNotEmpty ||
       folderId != null ||
+      unorganizedOnly ||
       ownerId != null ||
       priority != null ||
       purchaseStatus != null ||
@@ -38,7 +47,7 @@ class MimoFilters {
 
   int get activeCount => [
         if (tagIds.isNotEmpty) 1,
-        if (folderId != null) 1,
+        if (folderId != null || unorganizedOnly) 1,
         if (ownerId != null) 1,
         if (priority != null) 1,
         if (purchaseStatus != null) 1,
@@ -49,6 +58,7 @@ class MimoFilters {
     String? searchQuery,
     Set<String>? tagIds,
     String? Function()? folderId,
+    bool? unorganizedOnly,
     String? Function()? ownerId,
     String? Function()? priority,
     String? Function()? purchaseStatus,
@@ -60,6 +70,7 @@ class MimoFilters {
       searchQuery: searchQuery ?? this.searchQuery,
       tagIds: tagIds ?? this.tagIds,
       folderId: folderId != null ? folderId() : this.folderId,
+      unorganizedOnly: unorganizedOnly ?? this.unorganizedOnly,
       ownerId: ownerId != null ? ownerId() : this.ownerId,
       priority: priority != null ? priority() : this.priority,
       purchaseStatus: purchaseStatus != null ? purchaseStatus() : this.purchaseStatus,
@@ -83,6 +94,7 @@ class MimoFilters {
         if (!titleMatches && !tagMatches) return false;
       }
       if (tagIds.isNotEmpty && !mimo.tags.any((tag) => tagIds.contains(tag.id))) return false;
+      if (unorganizedOnly && mimo.folderId != null) return false;
       if (folderId != null && mimo.folderId != folderId) return false;
       if (ownerId != null && mimo.ownerId != ownerId) return false;
       if (priority != null && mimo.priority != priority) return false;

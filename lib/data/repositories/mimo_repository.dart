@@ -71,6 +71,10 @@ class MimoRepository {
     await _client.from('mimos').update({'purchase_status': status}).eq('id', mimoId);
   }
 
+  Future<void> updateNotes(String mimoId, String? notes) async {
+    await _client.from('mimos').update({'notes': notes}).eq('id', mimoId);
+  }
+
   Future<void> deleteMimo(String mimoId) async {
     await _client.from('mimos').delete().eq('id', mimoId);
   }

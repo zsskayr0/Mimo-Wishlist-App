@@ -4,6 +4,25 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.15-alpha] - 2026-08-29
+
+### Added
+- Campo de Notas editável no Detalhe do mimo — antes só existia leitura
+  condicional (só aparecia se já tivesse notas, sem jeito nenhum de
+  criar); agora é sempre um campo de texto, salvando automaticamente
+  (debounce de 600ms) via `MimoRepository.updateNotes`.
+- Filtro de pasta ganhou a opção "Desorganizado", pra achar os mimos sem
+  pasta nenhuma — antes só dava pra filtrar por uma pasta específica ou
+  "Todas".
+
+### Changed
+- Detalhe do mimo em duas colunas no desktop: esquerda com imagem,
+  título, valor e link (+ botão "Abrir na loja" logo abaixo); direita com
+  pasta, tags, prioridade, status de compra e notas. O diálogo deixou de
+  ter altura fixa nesse modo — agora se ajusta ao conteúdo (com um teto),
+  já que o botão "Abrir na loja" não depende mais de ficar fixo no rodapé
+  via `Positioned`. No mobile continua uma coluna só, sem mudança.
+
 ## [0.0.14-alpha] - 2026-08-29
 
 ### Added
