@@ -379,23 +379,22 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 
-  /// "Pastas" toggled on: mimos grouped into their own folder's section
-  /// (in the same order as _folders — newest folder first), unorganized
-  /// ones in a final section below. A fixed 2-column grid regardless of
-  /// the view-mode setting — reusing every view mode's renderer per
-  /// section wasn't worth the complexity this needed to ship.
+  /// "Pastas" toggled on: one compact card per folder (cover photo if
+  /// it has one, otherwise a colored icon tile) instead of expanding
+  /// every mimo inline — tap a folder card to actually open it.
+  /// Unorganized mimos show as their normal individual cards below.
   Widget _buildGroupedBody(MimoColors colors, List<Mimo> mimos) {
-    final byFolder = <String, List<Mimo>>{};
+    final counts = <String, int>{};
     final unorganized = <Mimo>[];
     for (final mimo in mimos) {
       final folderId = mimo.folderId;
       if (folderId == null) {
         unorganized.add(mimo);
       } else {
-        (byFolder[folderId] ??= []).add(mimo);
+        counts[folderId] = (counts[folderId] ?? 0) + 1;
       }
     }
-    final sections = _folders.where((f) => byFolder.containsKey(f.id)).toList();
+    final sections = _folders.where((f) => counts.containsKey(f.id)).toList();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
@@ -408,18 +407,24 @@ class _FeedScreenState extends State<FeedScreen> {
             label: const Text('Gerenciar pastas'),
           ),
         ),
-        for (final folder in sections) ...[
-          _FolderSectionHeader(
-            folder: folder,
-            count: byFolder[folder.id]!.length,
-            onTap: () => _openFolder(folder),
+        if (sections.isNotEmpty) ...[
+          MasonryGridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            mainAxisSpacing: 14,
+            crossAxisSpacing: 14,
+            itemCount: sections.length,
+            itemBuilder: (context, index) => _FolderCard(
+              folder: sections[index],
+              count: counts[sections[index].id]!,
+              onTap: () => _openFolder(sections[index]),
+            ),
           ),
-          const SizedBox(height: 10),
-          _GroupedGrid(mimos: byFolder[folder.id]!, onTap: _openDetail),
           const SizedBox(height: 22),
         ],
         if (unorganized.isNotEmpty) ...[
-          _FolderSectionHeader(folder: null, count: unorganized.length),
+          _FolderSectionHeader(count: unorganized.length),
           const SizedBox(height: 10),
           _GroupedGrid(mimos: unorganized, onTap: _openDetail),
         ],
@@ -428,39 +433,131 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 }
 
-class _FolderSectionHeader extends StatelessWidget {
-  const _FolderSectionHeader({
+class _FolderCard extends StatelessWidget {
+  const _FolderCard({
     required this.folder,
     required this.count,
-    this.onTap,
+    required this.onTap,
   });
 
-  /// Null renders the "Desorganizado" section instead of a real folder.
-  final Folder? folder;
+  final Folder folder;
   final int count;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = MimoColors.of(context);
-    final label = folder?.name ?? 'Desorganizado';
-    final dotColor = folder == null
-        ? colors.inkFaint
-        : Color(
-            int.parse('FF${folder!.color.replaceFirst('#', '')}', radix: 16),
-          );
+    final color = Color(
+      int.parse('FF${folder.color.replaceFirst('#', '')}', radix: 16),
+    );
 
-    final row = Row(
+    return Material(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: colors.border),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AspectRatio(
+                aspectRatio: 1,
+                child: folder.coverImageUrl == null
+                    ? Container(
+                        color: color.withValues(alpha: 0.14),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.folder_rounded,
+                          size: 42,
+                          color: color,
+                        ),
+                      )
+                    : Image.network(
+                        folder.coverImageUrl!,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      folder.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          '$count ${count == 1 ? 'mimo' : 'mimos'}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.inkFaint,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (folder.isShared) ...[
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.people_alt_rounded,
+                            size: 12,
+                            color: MimoColors.gradientA,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Just the "Desorganizado" label now — folders themselves render as
+/// _FolderCard tiles above, not sections with their mimos expanded
+/// inline.
+class _FolderSectionHeader extends StatelessWidget {
+  const _FolderSectionHeader({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = MimoColors.of(context);
+
+    return Row(
       children: [
         Container(
           width: 10,
           height: 10,
-          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: colors.inkFaint,
+            shape: BoxShape.circle,
+          ),
         ),
         const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold),
+        const Text(
+          'Desorganizado',
+          style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold),
         ),
         const SizedBox(width: 6),
         Text(
@@ -471,18 +568,7 @@ class _FolderSectionHeader extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        if (onTap != null) ...[
-          const Spacer(),
-          Icon(Icons.chevron_right, size: 18, color: colors.inkFaint),
-        ],
       ],
-    );
-
-    if (onTap == null) return row;
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: onTap,
-      child: row,
     );
   }
 }

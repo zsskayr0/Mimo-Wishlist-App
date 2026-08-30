@@ -4,6 +4,15 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.31-alpha] - 2026-08-30
+
+### Changed
+- Visão agrupada por pasta (toggle "Pastas" no Feed) trocada: em vez de
+  expandir os mimos de cada pasta ali mesmo, agora é um card por pasta
+  (foto de capa se tiver uma, ou um ícone colorido), com o total de
+  mimos. Toca no card pra abrir a pasta de verdade. Desorganizados
+  continuam como cards individuais, numa seção no final.
+
 ## [0.0.30-alpha] - 2026-08-30
 
 ### Changed
