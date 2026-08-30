@@ -71,8 +71,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
     }
     setState(() => _isSearching = true);
     _debounce = Timer(const Duration(milliseconds: 350), () async {
-      final results = await _repository.searchUsers(query);
-      if (mounted) setState(() => _searchResults = results);
+      try {
+        final results = await _repository.searchUsers(query);
+        if (mounted) {
+          setState(() {
+            _searchResults = results;
+            _isSearching = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) setState(() => _isSearching = false);
+      }
     });
   }
 

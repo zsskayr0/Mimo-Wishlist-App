@@ -24,7 +24,12 @@ class FriendshipRepository {
   }
 
   Future<List<UserProfile>> searchUsers(String query) async {
-    final trimmed = query.trim();
+    // Usernames are always stored without "@" (see login_screen.dart's
+    // signup validation) — but the search field's own hint text ("Buscar
+    // @usuário") invites typing it, so a literal "@thaty" would otherwise
+    // never match a stored "thaty" and search would look completely
+    // broken for exactly the input the UI itself suggests.
+    final trimmed = query.trim().replaceFirst(RegExp(r'^@'), '');
     if (trimmed.isEmpty) return const [];
 
     final rows = await _client

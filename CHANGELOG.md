@@ -4,6 +4,17 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.0.27-alpha] - 2026-08-30
+
+### Fixed
+- Busca de amigos não encontrava ninguém: a própria dica do campo
+  ("Buscar @usuário") convida a digitar o @, mas a busca nunca tirava
+  esse caractere antes de comparar — e username é sempre salvo sem @, aí
+  "@fulana" nunca batia com "fulana" no banco.
+- `_isSearching` nunca voltava a `false` depois da busca terminar: com
+  zero resultados, a tela ficava girando o spinner pra sempre em vez de
+  mostrar "Ninguém encontrado." (o que parecia a busca travada/quebrada).
+
 ## [0.0.26-alpha] - 2026-08-30
 
 ### Changed
