@@ -4,6 +4,18 @@ Todas as mudanças notáveis deste projeto são documentadas aqui.
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [1.0.1] - 2026-08-30
+
+### Fixed
+- **A 1.0.0 não conectava em nada** — login e cadastro falhavam com
+  "Failed host lookup" mesmo com o Supabase e a rede do aparelho
+  saudáveis. Causa: `android/app/src/main/AndroidManifest.xml` nunca
+  declarou `android.permission.INTERNET` explicitamente — o Flutter
+  injeta essa permissão sozinho em builds debug/profile (pra conexão do
+  hot reload), mas não em release, então isso ficou mascarado a sessão
+  inteira testando só debug. Confirmado com `aapt dump permissions`: o
+  APK release de fato saía sem a permissão; o de debug, com ela.
+
 ## [1.0.0] - 2026-08-30
 
 Primeira versão estável, depois de toda a fase alpha. Sem mudança de

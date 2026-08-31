@@ -1,4 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Flutter injects this automatically for debug/profile builds (so
+         hot reload's VM service can connect) but NOT for release — never
+         declaring it here explicitly meant every release build has been
+         silently missing it, masked all session by only ever testing
+         debug builds. Without it Android blocks DNS/socket access for
+         the app outright ("Failed host lookup"), regardless of the
+         device's own network being fine. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- image_picker: camera capture for a mimo's cover photo. Gallery
          picks go through the system Photo Picker on modern Android and
          need no declared permission. -->
