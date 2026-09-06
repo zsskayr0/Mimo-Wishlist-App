@@ -32,8 +32,11 @@ ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [Languages]
-Name: "portuguese"; MessagesFile: "compiler:Languages\Portuguese.isl"
-Name: "english"; MessagesFile: "compiler:Default.isl"
+; BrazilianPortuguese, not the bundled Portuguese.isl (that one's European
+; Portuguese) — the app itself is Brazilian Portuguese throughout, no
+; English UI at all, so the installer doesn't offer a language choice
+; either.
+Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
