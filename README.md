@@ -66,7 +66,12 @@ Novas migrations seguem a mesma numeração sequencial, sempre subindo
 ## Builds
 
 Builds de teste (Android e Windows, debug e release) saem como
-[Releases](../../releases) deste repo.
+[Releases](../../releases) deste repo. O Windows sai tanto como zip
+(arquivos soltos) quanto como instalador de verdade — `windows/
+installer/mimo.iss`, compilado com o [Inno Setup](https://jrsoftware.org/isinfo.php)
+(`ISCC.exe windows\installer\mimo.iss`, depois de um `flutter build
+windows --release`). Lembre de atualizar a versão dentro do `.iss` a
+cada release.
 
 Pra gerar um APK assinado localmente, copie `android/key.properties.example`
 para `android/key.properties` e preencha com o keystore de release (nunca
